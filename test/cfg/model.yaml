@@ -1,0 +1,40 @@
+---
+- model: asset
+  member:
+    - name: serialno
+      datatype: string
+      flag:
+        blank: false
+        unique: inherit
+    - name: price
+      datatype: float
+      flag:
+        blank: true
+
+- model: asset.netable
+  member:
+      - name: fqdn
+        datatype: string
+        flag:
+          unique: inherit
+          blank: false
+      - name: ip4
+        datatype: ip4
+        flag:
+          unique: inherit
+          blank: false
+
+- model: asset.netable.server
+  member:
+      - name: cpu
+        datatype: string
+        flag:
+          blank: true
+      - name: mem
+        datatype: float
+        flag:
+          blank: true
+      - name: hd
+        datatype: float
+        flag:
+          blank: true
