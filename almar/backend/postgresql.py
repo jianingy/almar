@@ -377,8 +377,8 @@ class PostgreSQLBackend(object):
     @defer.inlineCallbacks
     def push(self, path, inputs):
         nodes = map(lambda x: AlmarNode(path=None,
-                                        model='',
-                                        value=''), inputs)
+                                        model=x['model'],
+                                        value=x['value']), inputs)
         result = yield self.conn.runInteraction(self._push_xaction,
                                                 path, nodes)
         defer.returnValue(result)
@@ -388,23 +388,33 @@ class PostgreSQLBackend(object):
         affected = 0
 
         yield c.execute(SQL.GET_OBJECT % self.s_object, [path])
-        print dict(c.fetchall())
+        parent = dict(c.fetchall())
+        next_id = parent['__seq__'] if '__seq__' in parent else 0
 
         for item in items:
-            affected += yield self._touch_one(c, path, item)
+            affected += yield self._push_one(c, path, next_id, item)
+            next_id = next_id + 1
+
+        yield c.execute(SQL.UPDATE_OBJECT % self.s_object)
 
         defer.returnValue(affected)
 
     @defer.inlineCallbacks
-    def _push_one(self, c, path, item):
+    def _push_one(self, c, path, next_id, item):
 
-        # try touch by update first
-        yield c.execute(SQL.TRY_TOUCH_OBJECT % self.s_object, [item.path])
+        item_path = "%s.%s" % (path, next_id)
+        print 'id = ', next_id, 'value =', item.value
+        hstore_value = self.serialize_hstore(item.value)
+        model_name = item.model
 
-        if c._cursor.rowcount < 1:
-            # if nothing updated, do insert
-            yield c.execute(SQL.TOUCH_OBJECT % self.s_object, [item.path])
+        try:
+            model = self.g.model[model_name]
+        except KeyError:
+            raise exception.ModelNotExistError(
+                'model %s does not exist' % model_name)
+
+        yield c.execute(SQL.CREATE_OBJECT % self.s_object,
+                        [item_path, model['model'], hstore_value])
 
         affected = c._cursor.rowcount
-
         defer.returnValue(affected)
