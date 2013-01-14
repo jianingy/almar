@@ -52,31 +52,48 @@ class ObjectPostTestCase(unittest.TestCase):
 
     def test_post_non_dict(self):
         service = self._get_object_service('net.dot1q.dev11')
-        try:
+        with self.assertRaises(JSONRPCException) as cm:
             service.update(list())
-        except JSONRPCException as e:
-            self.assertEqual(e.error['faultCode'], 4001)
-            self.assertTrue(e.error['faultString'].find('dict') > -1)
+
+        e = cm.exception
+        self.assertEqual(e.error['faultCode'], 4001)
+        self.assertTrue(e.error['faultString'].find('dict') > -1)
 
     def test_post_no_model(self):
         service = self._get_object_service('net.dot1q.dev11')
         item = dict(value=dict(fqdn='dev11.dot1q.net',
                                ip4='192.168.123.11',
                                serialno='DRS011'))
-        try:
+        with self.assertRaises(JSONRPCException) as cm:
             service.update(item)
-        except JSONRPCException as e:
-            self.assertEqual(e.error['faultCode'], 4001)
-            self.assertTrue(e.error['faultString'].find('missing') > -1)
+
+        e = cm.exception
+        self.assertEqual(e.error['faultCode'], 4001)
+        self.assertTrue(e.error['faultString'].find('missing') > -1)
+
+    def test_post_invalid_model(self):
+        service = self._get_object_service('net.dot1q.dev12')
+        item = dict(model='something.not.exists',
+                    value=dict(fqdn='dev12.dot1q.net',
+                               ip4='192.168.123.12',
+                               serialno='DRS012'))
+
+        with self.assertRaises(JSONRPCException) as cm:
+            service.update(item)
+
+        e = cm.exception
+        self.assertEqual(e.error['faultCode'], 4001)
+        self.assertTrue(e.error['faultString'].find('does not exist') > -1)
 
     def test_post_no_value(self):
         service = self._get_object_service('net.dot1q.dev11')
         item = dict(model='asset.netable')
-        try:
+        with self.assertRaises(JSONRPCException) as cm:
             service.update(item)
-        except JSONRPCException as e:
-            self.assertEqual(e.error['faultCode'], 4001)
-            self.assertTrue(e.error['faultString'].find('missing') > -1)
+
+        e = cm.exception
+        self.assertEqual(e.error['faultCode'], 4001)
+        self.assertTrue(e.error['faultString'].find('missing') > -1)
 
     def test_post_duplicated(self):
         service = self._get_object_service('net.dot1q.dev10b')
@@ -85,11 +102,12 @@ class ObjectPostTestCase(unittest.TestCase):
                                ip4='192.168.123.10',
                                serialno='DRS010'))
 
-        try:
+        with self.assertRaises(JSONRPCException) as cm:
             service.update(item)
-        except JSONRPCException as e:
-            self.assertEqual(e.error['faultCode'], 5001)
-            self.assertTrue(e.error['faultString'].find('duplicate key') > -1)
+
+        e = cm.exception
+        self.assertEqual(e.error['faultCode'], 5001)
+        self.assertTrue(e.error['faultString'].find('duplicate key') > -1)
 
 
 if __name__ == '__main__':

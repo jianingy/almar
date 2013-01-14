@@ -48,14 +48,12 @@ class ObjectDeleteTestCase(unittest.TestCase):
 
         service.upsert(items)
 
-
     def test_delete_one(self):
         service = self._get_object_service('net.dot1q.dev22')
         resp = service.delete()
         self.assertIn('affected', resp)
         self.assertEqual(resp['affected'], 1)
         self.assertEqual(service.get(), dict())
-
 
     def test_delete_cascade(self):
         service = self._get_object_service('net.dot1q')
@@ -68,7 +66,6 @@ class ObjectDeleteTestCase(unittest.TestCase):
         self.assertEqual(service.get(), dict())
         service = self._get_object_service('net.dot1q.dev23')
         self.assertEqual(service.get(), dict())
-
 
 
 if __name__ == '__main__':

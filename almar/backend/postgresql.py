@@ -376,10 +376,9 @@ class PostgreSQLBackend(object):
     ##########################################################################
     @defer.inlineCallbacks
     def push(self, path, inputs):
-        nodes = map(lambda x: AlmarNode(path=x['path'],
+        nodes = map(lambda x: AlmarNode(path=None,
                                         model='',
                                         value=''), inputs)
-
         result = yield self.conn.runInteraction(self._push_xaction,
                                                 path, nodes)
         defer.returnValue(result)

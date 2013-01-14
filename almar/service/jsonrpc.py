@@ -20,9 +20,20 @@ class OperationService(jsonrpc.JSONRPC):
 
     addSlash = True
 
+    @defer.inlineCallbacks
     def jsonrpc_upsert(self, lst):
-        b = Backend()
-        return b.upsert(lst)
+        try:
+            b = Backend()
+            result = yield b.upsert(lst)
+            defer.returnValue(result)
+        except exception.ModelNotExistError as e:
+            defer.returnValue(Fault(exception.INVALID_INPUT, str(e)))
+        except exception.MissingFieldError as e:
+            defer.returnValue(Fault(exception.INVALID_INPUT, str(e)))
+        except exception.ConstraintViolationError as e:
+            defer.returnValue(Fault(exception.CONSTRAINT_VIOLATION, str(e)))
+        except Exception as e:
+            raise
 
     def jsonrpc_get(self, paths, method='self'):
         b = Backend()
@@ -71,6 +82,8 @@ class ObjectService(jsonrpc.JSONRPC):
                                         "content must be json dict"))
         except exception.MissingFieldError as e:
             defer.returnValue(Fault(exception.INVALID_INPUT, str(e)))
+        except exception.ModelNotExistError as e:
+            defer.returnValue(Fault(exception.INVALID_INPUT, str(e)))
         except exception.ConstraintViolationError as e:
             defer.returnValue(Fault(exception.CONSTRAINT_VIOLATION, str(e)))
         except:
@@ -81,6 +94,15 @@ class ObjectService(jsonrpc.JSONRPC):
         try:
             b = Backend()
             resp = yield b.delete([self.path], cascade)
+            defer.returnValue(resp)
+        except:
+            raise
+
+    @defer.inlineCallbacks
+    def jsonrpc_push(self, lst):
+        try:
+            b = Backend()
+            resp = yield b.push(self.path, lst)
             defer.returnValue(resp)
         except:
             raise
