@@ -1,0 +1,117 @@
+#+TITLE:     README.org
+#+AUTHOR:    Jianing Yang
+#+EMAIL:     jianingy.yang AT gmail DOT com
+#+DATE:      2013-01-15 Tue
+#+DESCRIPTION:
+#+KEYWORDS:
+#+LANGUAGE:  en
+#+OPTIONS:   H:3 num:t toc:t \n:nil @:t ::t |:t ^:t -:t f:t *:t <:t
+#+OPTIONS:   TeX:t LaTeX:t skip:nil d:nil todo:t pri:nil tags:not-in-toc
+#+INFOJS_OPT: view:nil toc:nil ltoc:t mouse:underline buttons:0 path:http://orgmode.org/org-info.js
+#+EXPORT_SELECT_TAGS: export
+#+EXPORT_EXCLUDE_TAGS: noexport
+#+LINK_UP:
+#+LINK_HOME:
+#+XSLT:
+
+* 简介
+
+Almar (之前的Minitree) 是一个以树形结构组织数据的工具。
+
+* 配置文件
+
+配置文件分为两种：主配置和模型配置。
+
+** 主配置
+
+配置数据和WEB相关的东西，例如：
+
+#+BEGIN_EXAMPLE
+---
+database:
+    host: localhost
+    port: 5432
+    user: jianingy
+    schema: almar
+    table: object
+    min_connections: 4
+    max_connections: 8
+
+server:
+    port: 9999
+    max_threads: 4
+
+model:
+    - ~/devel/almar/etc/model.yaml
+#+END_EXAMPLE
+
+** 模型配置
+
+对数据类型进行配置，例如：
+
+#+BEGIN_EXAMPLE
+---
+- model: asset
+  member:
+    - name: serialno
+      datatype: string
+      flag:
+        blank: false
+        unique: inherit
+    - name: price
+      datatype: float
+      flag:
+        blank: true
+
+- model: asset.netable
+  member:
+      - name: fqdn
+        datatype: string
+        flag:
+          unique: inherit
+          blank: false
+      - name: ip4
+        datatype: ip4
+        flag:
+          unique: inherit
+          blank: false
+
+- model: asset.netable.server
+  member:
+      - name: cpu
+        datatype: string
+        flag:
+          blank: true
+      - name: mem
+        datatype: float
+        flag:
+          blank: true
+      - name: hd
+        datatype: float
+        flag:
+          blank: true
+#+END_EXAMPLE
+
+数据类型配置是以继承关系存在的。例如：asset 中定义了 “serialno”，那么
+asset 的子类型“asset.netable”就会自动继承“serialno”这个字段。
+
+数据类型的字段配置中 *flag* 提供对数据类型的一些限制：
+
+- unique :: 唯一性限制
+- blank :: 非空限制
+
+
+
+
+
+
+* 运行服务
+
+#+BEGIN_SRC sh
+twistd -n almar -c 主配置文件.yaml
+#+END_SRC
+
+* API
+
+Almar 采用 JSON-RPC 作为 API。 具体使用方法请参考 test 目录下的测试用
+例。
