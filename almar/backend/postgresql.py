@@ -389,15 +389,17 @@ class PostgreSQLBackend(object):
 
         yield c.execute(SQL.GET_OBJECT % self.s_object, [path])
         parent = dict(c.fetchall())
-        next_id = parent['__seq__'] if '__seq__' in parent else 0
+        next_id = int(parent['__seq__']) if '__seq__' in parent else 0
 
         for item in items:
             affected += yield self._push_one(c, path, next_id, item)
             next_id = next_id + 1
 
-        yield c.execute(SQL.UPDATE_OBJECT % self.s_object)
+        hstore_value = self.serialize_hstore(dict(__seq__=next_id))
+        yield c.execute(SQL.UPDATE_OBJECT % self.s_object,
+                        [parent['__model__'], hstore_value, path])
 
-        defer.returnValue(affected)
+        defer.returnValue(dict(affected=affected))
 
     @defer.inlineCallbacks
     def _push_one(self, c, path, next_id, item):
