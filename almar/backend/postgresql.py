@@ -376,9 +376,12 @@ class PostgreSQLBackend(object):
     ##########################################################################
     @defer.inlineCallbacks
     def push(self, path, inputs):
-        nodes = map(lambda x: AlmarNode(path=None,
-                                        model=x['model'],
-                                        value=x['value']), inputs)
+        try:
+            nodes = map(lambda x: x.setdefault('path', None), inputs)
+        except AttributeError:
+            raise exception.MalformedIncomingData('item must be dict')
+
+        nodes = map(self.make_node, inputs)
         result = yield self.conn.runInteraction(self._push_xaction,
                                                 path, nodes)
         defer.returnValue(result)

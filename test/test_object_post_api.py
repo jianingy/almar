@@ -50,6 +50,10 @@ class ObjectPostTestCase(unittest.TestCase):
         self.assertIn('affected', resp)
         self.assertEqual(resp['affected'], 1)
 
+        expect = deepcopy(item['value'])
+        expect['__model__'] = item['model']
+        self.assertEqual(service.get(), expect)
+
     def test_post_non_dict(self):
         service = self._get_object_service('net.dot1q.dev11')
         with self.assertRaises(JSONRPCException) as cm:

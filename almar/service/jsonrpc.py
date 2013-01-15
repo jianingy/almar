@@ -104,6 +104,14 @@ class ObjectService(jsonrpc.JSONRPC):
             b = Backend()
             resp = yield b.push(self.path, lst)
             defer.returnValue(resp)
+        except exception.MissingFieldError as e:
+            defer.returnValue(Fault(exception.INVALID_INPUT, str(e)))
+        except exception.ModelNotExistError as e:
+            defer.returnValue(Fault(exception.INVALID_INPUT, str(e)))
+        except exception.MalformedIncomingData as e:
+            defer.returnValue(Fault(exception.INVALID_INPUT, str(e)))
+        except exception.ConstraintViolationError as e:
+            defer.returnValue(Fault(exception.CONSTRAINT_VIOLATION, str(e)))
         except:
             raise
 
