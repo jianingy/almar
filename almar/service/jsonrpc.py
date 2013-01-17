@@ -48,6 +48,12 @@ class OperationService(jsonrpc.JSONRPC):
         b = Backend()
         return b.touch(paths)
 
+    @defer.inlineCallbacks
+    def jsonrpc_search(self, query):
+        b = Backend()
+        result = yield b.search(query)
+        defer.returnValue(result)
+
 
 class ObjectService(jsonrpc.JSONRPC):
 

@@ -13,10 +13,15 @@ from txpostgres import txpostgres
 
 from almar.global_config import GlobalConfig
 from almar import exception
+from almar.lex import parse as parse_query
+from almar.util import quote
+from almar import lex
+
 from almar.debug import out, pretty_out
 from almar.debug import fatal_out, warn_out
 
 import psycopg2
+
 
 AlmarNode = namedtuple('AlmarNode', 'path, model, value')
 
@@ -60,6 +65,12 @@ class SQL(object):
     TOUCH_OBJECT = 'INSERT INTO %s(path) VALUES (%%s)'
 
     GET_OBJECT_MODEL = 'SELECT model FROM %s WHERE path=%%s'
+
+    SELECT_OBJECT_MANY = ('SELECT path, (each(value)).key, (each(value)).value'
+                          ' FROM (SELECT path, '
+                          ' (value || (\'"__model__" => "\''
+                          ' || model::TEXT || \'"\')::HSTORE) AS value'
+                          ' FROM %s WHERE %s) AS values')
 
     GET_LAST_ID = "SELECT currval(%s)"
 
@@ -423,3 +434,135 @@ class PostgreSQLBackend(object):
 
         affected = c._cursor.rowcount
         defer.returnValue(affected)
+
+    ##########################################################################
+    #
+    # API: SEARCH
+    #
+    ##########################################################################
+
+    @defer.inlineCallbacks
+    def search(self, query):
+        where_clause = self._build_where_clause(parse_query(query))
+        sql = SQL.SELECT_OBJECT_MANY % (self.s_object, where_clause)
+        rows = yield self.conn.runQuery(sql)
+        result = dict()
+        reduce(self._reduce_search_result, rows, result)
+        defer.returnValue(map(lambda x: dict(x), result.values()))
+
+    def _reduce_search_result(self, result, x):
+        result.setdefault(x[0], list())
+        result[x[0]].append((x[1], x[2]))
+        return result
+
+    def _build_where_clause(self, suffix):
+        # NOTICE: DO NOT ADD DEFAULT SEARCH HERE
+        #         If there is only one value in the search expression,
+        #         someone may ask to search it as nodename. PLEASE DO NOT
+        #         ADD this feature here in order to keep the code clean !!!
+
+        suffix.reverse()
+        stack = list()
+
+        if len(suffix) == 1:
+            raise exception.SearchGrammarError("incomplete search query")
+
+        while suffix:
+            term, term_type, pos = suffix.pop()
+            if term_type == lex.TOKEN_OPER:
+                rhs, quoted = stack.pop()
+                if not quoted:
+                    rhs = quote(rhs)
+                try:
+                    lhs, quoted = stack.pop()
+                    if not quoted:
+                        lhs = quote(lhs)
+                except IndexError:
+                    vicinity = " ".join(map(lambda x: x[1], suffix))
+                    raise exception.SearchGrammarError(
+                        "missing operand near '%s' at position %s"
+                        % (vicinity, pos))
+
+                # use ILIKE instead of ~ for case-insensitive
+                if term in ("~", "!~"):
+                    term = ("ILIKE", "NOT ILIKE")[term == "!~"]
+                    # escape special characters of LIKE expression
+                    rhs.replace("%", "\%").replace("_", "\_")
+                    rhs = "%%%s%%" % rhs
+
+                if lhs.lower() in ('__model__', '__path__'):
+                    lhs = lhs.strip('_')
+                    if term == '==':
+                        where_clause = \
+                            "lower(\"%s\") = lower(E'%s')" % (lhs, rhs)
+                    elif term == '!=':
+                        where_clause = \
+                            "lower(\"%s\") != lower(E'%s')" % (lhs, rhs)
+                    elif term == '===':
+                        where_clause = "\"%s\" = E'%s'" % (lhs, rhs)
+                    elif term == '!==':
+                        where_clause = "\"%s\" != E'%s'" % (lhs, rhs)
+                    elif term == "IN":
+                        _ = ",".join(map(lambda x:
+                                         "lower('%s')" % quote(x),
+                                         rhs.split(",")))
+                        where_clause = "lower(%s) = ANY(ARRAY[%s])" % (lhs, _)
+                    elif term == "^":
+                        where_clause = "lower(\"%s\") LIKE lower(E'%s%%')" % (lhs, rhs)
+                    else:
+                        where_clause = "\"%s\" %s E'%s'" % (lhs, term, rhs)
+                elif lhs.lower() in ('id'):
+                    if term in ('==', '==='):
+                        term = '='
+                        where_clause = "\"%s\" %s E'%s'" % (lhs, term, rhs)
+                    elif term in ('!=='):
+                        term = '!='
+                        where_clause = "\"%s\" %s E'%s'" % (lhs, term, rhs)
+                    elif term == "IN":
+                        _ = ",".join(map(lambda x: "%s" % quote(x),
+                        rhs.split(",")))
+                        where_clause = "%s = ANY(ARRAY[%s])" % (lhs, _)
+                elif term == "IN":
+                    _ = ",".join(map(lambda x: "lower('%s')" % quote(x),
+                                     rhs.split(",")))
+                    where_clause = \
+                        "lower(value->E'%s') = ANY(ARRAY[%s])" % (lhs, _)
+                elif term == "==":
+                    where_clause = \
+                        "lower(value->E'%s') = lower(E'%s')" % (lhs, rhs)
+                elif term == "!=":
+                    where_clause = \
+                        "lower(value->E'%s') != lower(E'%s')" % (lhs, rhs)
+                elif term == "===":
+                    where_clause = "value->E'%s' = E'%s'" % (lhs, rhs)
+                elif term == "!==":
+                    where_clause = "value->E'%s' != E'%s'" % (lhs, rhs)
+                elif term in ("^"):
+                    term = "LIKE"
+                    rhs.replace("%", "\%").replace("_", "\_")
+                    rhs = "%s%%" % rhs
+                    where_clause = "lower(value->E'%s') LIKE lower(E'%s')" \
+                        % (lhs, rhs)
+                else:
+                    where_clause = "value->E'%s' %s E'%s'" % (lhs, term, rhs)
+
+                stack.append((where_clause, True))
+            elif term_type == lex.TOKEN_LOGIC:
+                try:
+                    rhs, quoted = stack.pop()
+                    lhs, quoted = stack.pop()
+                except IndexError:
+                    vicinity = term
+                    raise backend.SearchGrammarError(
+                        "missing logic clause near '%s' at position %s"
+                        % (vicinity, pos))
+                where_clause = " ".join((lhs, term.upper(), rhs))
+                stack.append(("(%s)" % where_clause, True))
+            else:
+                stack.append((term, False))
+
+        if len(stack) == 1:
+            return stack[0][0]
+        else:
+            raise exception.SearchGrammarError(
+                "syntax error at position %s" % (pos))

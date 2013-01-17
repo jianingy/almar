@@ -32,6 +32,10 @@ class ConstraintViolationError(AlmarErrorBase):
     pass
 
 
+class SearchGrammerError(AlmarErrorBase):
+    pass
+
+
 # ERROR CODE
 
 INVALID_INPUT = 4001
