@@ -16,7 +16,7 @@ from copy import deepcopy
 SERVICE_BASE = 'http://localhost:9999/object'
 
 
-class ObjectPostTestCase(unittest.TestCase):
+class ObjectUpdateTestCase(unittest.TestCase):
 
     service = None
 
@@ -39,7 +39,7 @@ class ObjectPostTestCase(unittest.TestCase):
         service_uri = join(SERVICE_BASE, path.strip('.').replace('.', '/'))
         return ServiceProxy(service_uri)
 
-    def test_post(self):
+    def test_update(self):
         service = self._get_object_service('net.dot1q.dev11')
         item = dict(model='asset.netable',
                     value=dict(fqdn='dev11.dot1q.net',
@@ -54,7 +54,7 @@ class ObjectPostTestCase(unittest.TestCase):
         expect['__model__'] = item['model']
         self.assertEqual(service.get(), expect)
 
-    def test_post_non_dict(self):
+    def test_update_non_dict(self):
         service = self._get_object_service('net.dot1q.dev11')
         with self.assertRaises(JSONRPCException) as cm:
             service.update(list())
@@ -63,7 +63,7 @@ class ObjectPostTestCase(unittest.TestCase):
         self.assertEqual(e.error['faultCode'], 4001)
         self.assertTrue(e.error['faultString'].find('dict') > -1)
 
-    def test_post_no_model(self):
+    def test_update_no_model(self):
         service = self._get_object_service('net.dot1q.dev11')
         item = dict(value=dict(fqdn='dev11.dot1q.net',
                                ip4='192.168.123.11',
@@ -75,7 +75,7 @@ class ObjectPostTestCase(unittest.TestCase):
         self.assertEqual(e.error['faultCode'], 4001)
         self.assertTrue(e.error['faultString'].find('missing') > -1)
 
-    def test_post_invalid_model(self):
+    def test_update_invalid_model(self):
         service = self._get_object_service('net.dot1q.dev12')
         item = dict(model='something.not.exists',
                     value=dict(fqdn='dev12.dot1q.net',
@@ -89,7 +89,7 @@ class ObjectPostTestCase(unittest.TestCase):
         self.assertEqual(e.error['faultCode'], 4001)
         self.assertTrue(e.error['faultString'].find('does not exist') > -1)
 
-    def test_post_no_value(self):
+    def test_update_no_value(self):
         service = self._get_object_service('net.dot1q.dev11')
         item = dict(model='asset.netable')
         with self.assertRaises(JSONRPCException) as cm:
@@ -99,7 +99,7 @@ class ObjectPostTestCase(unittest.TestCase):
         self.assertEqual(e.error['faultCode'], 4001)
         self.assertTrue(e.error['faultString'].find('missing') > -1)
 
-    def test_post_duplicated(self):
+    def test_update_duplicated(self):
         service = self._get_object_service('net.dot1q.dev10b')
         item = dict(model='asset.netable',
                     value=dict(fqdn='dev10.dot1q.net',
