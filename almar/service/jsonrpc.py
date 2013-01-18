@@ -30,6 +30,8 @@ class OperationService(jsonrpc.JSONRPC):
             defer.returnValue(Fault(exception.INVALID_INPUT, str(e)))
         except exception.MissingFieldError as e:
             defer.returnValue(Fault(exception.INVALID_INPUT, str(e)))
+        except exception.KeyNotDefinedError as e:
+            defer.returnValue(Fault(exception.INVALID_INPUT, str(e)))
         except exception.ConstraintViolationError as e:
             defer.returnValue(Fault(exception.CONSTRAINT_VIOLATION, str(e)))
         except Exception as e:
@@ -90,6 +92,8 @@ class ObjectService(jsonrpc.JSONRPC):
             defer.returnValue(Fault(exception.INVALID_INPUT, str(e)))
         except exception.ModelNotExistError as e:
             defer.returnValue(Fault(exception.INVALID_INPUT, str(e)))
+        except exception.KeyNotDefinedError as e:
+            defer.returnValue(Fault(exception.INVALID_INPUT, str(e)))
         except exception.ConstraintViolationError as e:
             defer.returnValue(Fault(exception.CONSTRAINT_VIOLATION, str(e)))
         except:
@@ -113,6 +117,8 @@ class ObjectService(jsonrpc.JSONRPC):
         except exception.MissingFieldError as e:
             defer.returnValue(Fault(exception.INVALID_INPUT, str(e)))
         except exception.ModelNotExistError as e:
+            defer.returnValue(Fault(exception.INVALID_INPUT, str(e)))
+        except exception.KeyNotDefinedError as e:
             defer.returnValue(Fault(exception.INVALID_INPUT, str(e)))
         except exception.MalformedIncomingData as e:
             defer.returnValue(Fault(exception.INVALID_INPUT, str(e)))

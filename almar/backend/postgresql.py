@@ -284,6 +284,10 @@ class PostgreSQLBackend(object):
                 'model %s does not exist' % model_name)
 
         # upsert item
+        weird_keys = set(item.value.keys()).difference(model['member'].keys())
+        if weird_keys:
+            raise exception.KeyNotDefinedError(
+                'undefined key: %s' % ",".join(weird_keys))
         hstore_value = self.serialize_hstore(item.value)
 
         # try update first

@@ -24,6 +24,10 @@ class ModelNotExistError(AlmarErrorBase):
     pass
 
 
+class KeyNotDefinedError(AlmarErrorBase):
+    pass
+
+
 class MissingFieldError(AlmarErrorBase):
     pass
 
