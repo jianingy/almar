@@ -63,16 +63,31 @@ class ObjectUpdateTestCase(unittest.TestCase):
         self.assertEqual(e.error['faultCode'], 4001)
         self.assertTrue(e.error['faultString'].find('dict') > -1)
 
-    def test_update_no_model(self):
+    def test_update_no_model_update(self):
         service = self._get_object_service('net.dot1q.dev11')
-        item = dict(value=dict(fqdn='dev11.dot1q.net',
+        item = dict(value=dict(fqdn='dev11b.dot1q.net',
                                ip4='192.168.123.11',
                                serialno='DRS011'))
+
+        resp = service.update(item)
+        self.assertIn('affected', resp)
+        self.assertEqual(resp['affected'], 1)
+
+        expect = deepcopy(item['value'])
+        expect['__model__'] = 'asset.netable'
+        self.assertEqual(service.get(), expect)
+
+    def test_update_no_model_create(self):
+        service = self._get_object_service('net.dot1q.dev12')
+        item = dict(value=dict(fqdn='dev12.dot1q.net',
+                               ip4='192.168.123.12',
+                               serialno='DRS012'))
         with self.assertRaises(JSONRPCException) as cm:
             service.update(item)
 
         e = cm.exception
         self.assertEqual(e.error['faultCode'], 4001)
+        print e.error['faultString']
         self.assertTrue(e.error['faultString'].find('missing') > -1)
 
     def test_update_invalid_model(self):
@@ -88,6 +103,21 @@ class ObjectUpdateTestCase(unittest.TestCase):
         e = cm.exception
         self.assertEqual(e.error['faultCode'], 4001)
         self.assertTrue(e.error['faultString'].find('does not exist') > -1)
+
+    def test_update_invalid_key(self):
+        service = self._get_object_service('net.dot1q.dev12')
+        item = dict(model='asset.netable',
+                    value=dict(fqdn='dev12.dot1q.net',
+                               ip4='192.168.123.12',
+                               a_funny_key='should not be inserted',
+                               serialno='DRS012'))
+
+        with self.assertRaises(JSONRPCException) as cm:
+            service.update(item)
+
+        e = cm.exception
+        self.assertEqual(e.error['faultCode'], 4001)
+        self.assertTrue(e.error['faultString'].find('undefined') > -1)
 
     def test_update_no_value(self):
         service = self._get_object_service('net.dot1q.dev11')

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# filename   : test_rest.py
+# filename   : test_object_get_api.py
 # created at : 2013-01-11 14:25:07
 # author     : Jianing Yang <jianingy.yang AT gmail DOT com>
 

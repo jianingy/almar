@@ -237,9 +237,12 @@ class PostgreSQLBackend(object):
         return ', '.join('"%s"=>"%s"' % (esc(k), esc(v))
                          for k, v in val.iteritems())
 
-    def make_node(self, x):
+    def make_node(self, x, ignores=[]):
         try:
-            return AlmarNode(path=x['path'], model=x['model'], value=x['value'])
+            map(lambda ignore: x.setdefault(ignore, None), ignores)
+            return AlmarNode(path=x['path'],
+                             model=x['model'],
+                             value=x['value'])
         except KeyError as e:
             raise exception.MissingFieldError(
                 "the following fields are missing: " + ",".join(e.args))
@@ -252,7 +255,7 @@ class PostgreSQLBackend(object):
     @defer.inlineCallbacks
     def upsert(self, inputs):
         try:
-            nodes = map(self.make_node, inputs)
+            nodes = map(lambda x: self.make_node(x, ignores=['model']), inputs)
             affected = yield self.conn.runInteraction(self._upsert_xaction,
                                                       nodes)
             defer.returnValue(dict(affected=affected))
@@ -274,9 +277,16 @@ class PostgreSQLBackend(object):
     def _upsert_one(self, c, item):
 
         # get node model
-        yield c.execute(SQL.GET_OBJECT_MODEL % self.s_object, [item.model])
+        yield c.execute(SQL.GET_OBJECT_MODEL % self.s_object, [item.path])
         result = c.fetchall()
         model_name = result[0][0] if result else item.model
+
+        # model_name will be None if input without 'model' field
+        # check the code of _make_node for detail
+        if model_name is None:
+            raise exception.MissingFieldError(
+                "the following fields are missing: model")
+
         try:
             model = self.g.model[model_name]
         except KeyError:
@@ -391,12 +401,7 @@ class PostgreSQLBackend(object):
     ##########################################################################
     @defer.inlineCallbacks
     def push(self, path, inputs):
-        try:
-            nodes = map(lambda x: x.setdefault('path', None), inputs)
-        except AttributeError:
-            raise exception.MalformedIncomingData('item must be dict')
-
-        nodes = map(self.make_node, inputs)
+        nodes = map(lambda x: self.make_node(x, ignores=['path']), inputs)
         result = yield self.conn.runInteraction(self._push_xaction,
                                                 path, nodes)
         defer.returnValue(result)
