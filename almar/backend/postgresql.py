@@ -98,7 +98,7 @@ class PostgreSQLBackend(object):
     def start(self, *args, **kwargs):
         dsn = " ".join(
             map(lambda x: "%s=%s" % (x, getattr(self.g.database, x)),
-                ['host', 'port', 'user', 'password']))
+                ['host', 'port', 'user', 'password', 'dbname']))
         self.conn = txpostgres.ConnectionPool(None, dsn)
         d = self.conn.start()
         d.addCallback(self._init_extension)

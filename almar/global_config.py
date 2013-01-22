@@ -14,16 +14,21 @@ from yaml import load as yaml_load
 from debug import pretty_out
 from collections import namedtuple
 
+MODE_PROXY = 1
+MODE_WORKER = 2
+
 DatabaseConfig = namedtuple('DatabaseConfig', ['host',
                                                'port',
                                                'user',
                                                'password',
+                                               'dbname',
                                                'schema',
                                                'table',
                                                'min_connections',
                                                'max_connections'])
 
-ServerConfig = namedtuple('ServerConfig', ['port', 'max_threads'])
+ServerConfig = namedtuple('ServerConfig', ['port', 'max_threads', 'role'])
+ProxyConfig = namedtuple('ServerConfig', ['port', 'max_threads'])
 
 ModelConfig = namedtuple('ModelConfig', ['model', 'member'])
 
@@ -53,6 +58,9 @@ class GlobalConfig(object):
 
         G.database = G._build_sub_config(DatabaseConfig, bc['database'])
         G.server = G._build_sub_config(ServerConfig, bc['server'])
+
+        if 'proxy' in bc:
+            G.proxy = G._build_sub_config(ProxyConfig, bc['proxy'])
 
         models = reduce(lambda x, y: x.update(y) or x,
                         map(lambda x: dict(G._build_model_config(x)),
@@ -115,3 +123,4 @@ if __name__ == '__main__':
     pretty_out(g.model)
     pretty_out(g.database)
     pretty_out(g.server)
+    pretty_out(g.proxy)
