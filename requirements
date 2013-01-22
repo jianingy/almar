@@ -2,3 +2,4 @@ twisted
 psycopg2
 txpostgres
 PyYAML
+txJSON-RPC
