@@ -13,6 +13,7 @@ from txjsonrpc.web import jsonrpc
 from txjsonrpc.jsonrpclib import Fault
 from twisted.web import resource
 from almar.backend.postgresql import PostgreSQLBackend as Backend
+from almar.global_config import GlobalConfig
 from almar import exception
 
 
@@ -55,6 +56,11 @@ class OperationService(jsonrpc.JSONRPC):
         b = Backend()
         result = yield b.search(query)
         defer.returnValue(result)
+
+    def jsonrpc_show(self):
+        from almar.global_config import MODE_WORKER
+        g = GlobalConfig()
+        return dict(mode=MODE_WORKER, rc=g.server._asdict())
 
 
 class ObjectService(jsonrpc.JSONRPC):

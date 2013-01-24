@@ -11,6 +11,13 @@ database:
 server:
     port: 9999
     max_threads: 4
+    role:
+        reader: True
+        writer: True
+
+proxy:
+    port: 55555
+    max_threads: 4
 
 model:
     - ~/devel/almar/test/cfg/model.yaml

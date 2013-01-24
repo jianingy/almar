@@ -13,11 +13,17 @@ from twisted.plugin import IPlugin
 from twisted.application.service import IServiceMaker
 from twisted.application import internet
 
+from almar.util import banner
+
 
 class AlmarServiceOptions(usage.Options):
     optParameters = [
-        ["config", "c", "etc/development.yaml", "Path to top configuration."],
-        ["port", "p", 9999, "Port to listen."],
+        ["config", "c", "etc/production.yaml", "Path to top configuration."],
+        ["port", "p", None, "Port to listen."],
+    ]
+
+    optFlags = [
+        ["proxy", "x", "Start in proxy mode"],
     ]
 
 
@@ -47,11 +53,19 @@ class AlmarServiceMaker(object):
         b.start()
 
         # configure web service
-        from almar.service import site_root
+        from almar.service import worker_root, proxy_root
         from twisted.web import server
-        site = server.Site(site_root)
 
-        return internet.TCPServer(int(options["port"] or g.srv['port']), site)
+        if options['proxy']:
+            banner("RUNNING IN PROXY MODE")
+            site = server.Site(proxy_root)
+            port = int(options["port"] or g.proxy.port)
+        else:
+            banner("RUNNING IN WORKER MODE")
+            site = server.Site(worker_root)
+            port = int(options["port"] or g.server.port)
+
+        return internet.TCPServer(port, site)
 
 
 serviceMaker = AlmarServiceMaker()
