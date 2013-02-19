@@ -106,7 +106,7 @@ class ObjectRESTProxyService(resource.Resource):
 
     def getChild(self, name, request):
         from os.path import splitext
-        path, method = splitext(request.path[len('/object/'):])
+        path, method = splitext(request.path[len('/rest/'):])
         path = path.replace('/', '.')
         if method.startswith('.'):
             method = method[1:].lower()
