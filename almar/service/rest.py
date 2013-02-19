@@ -7,6 +7,7 @@
 
 __author__ = 'Jianing Yang <jianingy.yang AT gmail DOT com>'
 
+from twisted.internet import defer
 from twisted.web import resource
 from twisted.web.server import NOT_DONE_YET
 from twisted.python.failure import Failure
@@ -14,7 +15,6 @@ from ujson import encode as json_encode, decode as json_decode
 from debug import warn_out
 from almar.backend.postgresql import PostgreSQLBackend as Backend
 from almar import exception
-
 
 
 class ObjectRESTService(resource.Resource):
