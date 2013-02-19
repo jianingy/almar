@@ -74,6 +74,8 @@ class SQL(object):
 
     GET_LAST_ID = "SELECT currval(%s)"
 
+    GET_DESCENDANT = ('SELECT path FROM %s WHERE path <@ %%s AND path != %%s')
+
 
 class PostgreSQLBackend(object):
 
@@ -329,8 +331,13 @@ class PostgreSQLBackend(object):
     def _get_xaction(self, c, paths, method=''):
         result = []
         for path in paths:
-            yield c.execute(SQL.GET_OBJECT % self.s_object, [path])
-            result.append((path, dict(c.fetchall())))
+            if method == 'descendant':
+                yield c.execute(SQL.GET_DESCENDANT % self.s_object,
+                                [path, path])
+                result.extend(map(lambda x: x[0], c.fetchall()))
+            else:
+                yield c.execute(SQL.GET_OBJECT % self.s_object, [path])
+                result.append((path, dict(c.fetchall())))
 
         defer.returnValue(result)
 
@@ -458,7 +465,11 @@ class PostgreSQLBackend(object):
         rows = yield self.conn.runQuery(sql)
         result = dict()
         reduce(self._reduce_search_result, rows, result)
-        defer.returnValue(map(lambda x: dict(x), result.values()))
+
+        def _merge(x):
+            return dict(dict(x[1]).items() + {'__path__': x[0]}.items())
+
+        defer.returnValue(map(_merge, result.iteritems()))
 
     def _reduce_search_result(self, result, x):
         result.setdefault(x[0], list())

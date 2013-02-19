@@ -132,19 +132,3 @@ class ObjectService(jsonrpc.JSONRPC):
             defer.returnValue(Fault(exception.CONSTRAINT_VIOLATION, str(e)))
         except:
             raise
-
-
-class ObjectProxyService(resource.Resource):
-
-    isLeaf = False
-
-    def getChild(self, name, request):
-        from os.path import splitext
-        path, method = splitext(request.path[len('/object/'):])
-        path = path.replace('/', '.')
-        if method.startswith('.'):
-            method = method[1:].lower()
-        else:
-            method = 'self'
-
-        return ObjectService(path.strip('.'))

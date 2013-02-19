@@ -12,7 +12,7 @@ from twisted.web import resource
 from twisted.web.server import NOT_DONE_YET
 from twisted.python.failure import Failure
 from ujson import encode as json_encode, decode as json_decode
-from debug import warn_out
+from almar.debug import warn_out
 from almar.backend.postgresql import PostgreSQLBackend as Backend
 from almar import exception
 
@@ -36,7 +36,7 @@ class ObjectRESTService(resource.Resource):
 
         if isinstance(value, Failure):
             request.setResponseCode(500)
-            if isinstance(value.value, AlmarError.AlmarErrorBase):
+            if isinstance(value.value, exception.AlmarErrorBase):
                 error = dict(message=str(value.value))
                 response = dict(error=error)
             else:
@@ -72,7 +72,10 @@ class ObjectRESTService(resource.Resource):
     def async_GET(self, request):
         b = Backend()
         result = yield b.get([self.path], self.method)
-        defer.returnValue(result[0][1])
+        if self.method == 'descendant':
+            defer.returnValue(result)
+        else:
+            defer.returnValue(result[0][1])
 
     @defer.inlineCallbacks
     def async_POST(self, request):
@@ -83,9 +86,9 @@ class ObjectRESTService(resource.Resource):
         try:
             data = json_decode(content)
         except ValueError:
-            raise AlmarError.MalformedIncomingData('must be json')
+            raise exception.MalformedIncomingData('must be json')
         if not isinstance(data, dict):
-            raise AlmarError.MalformedIncomingData('must be json dict')
+            raise exception.MalformedIncomingData('must be json dict')
         data['path'] = self.path
         result = yield b.upsert([data])
         defer.returnValue(result)
@@ -95,3 +98,19 @@ class ObjectRESTService(resource.Resource):
         b = Backend()
         result = yield b.delete([self.path], False)
         defer.returnValue(result)
+
+
+class ObjectRESTProxyService(resource.Resource):
+
+    isLeaf = False
+
+    def getChild(self, name, request):
+        from os.path import splitext
+        path, method = splitext(request.path[len('/object/'):])
+        path = path.replace('/', '.')
+        if method.startswith('.'):
+            method = method[1:].lower()
+        else:
+            method = 'self'
+
+        return ObjectRESTService(path.strip('.'), method)
