@@ -9,9 +9,10 @@ __author__ = 'Jianing Yang <jianingy.yang AT gmail DOT com>'
 
 from twisted.internet import defer
 from txjsonrpc.web import jsonrpc
-from txjsonrpc.netstring.jsonrpc import Proxy as RPCProxy
+from txjsonrpc.web.jsonrpc import Proxy as RPCProxy
 from txjsonrpc.jsonrpclib import Fault
 from almar.global_config import GlobalConfig
+from os.path import join as path_join
 
 
 class AlmarProxyService(jsonrpc.JSONRPC):
@@ -28,6 +29,18 @@ class AlmarProxyService(jsonrpc.JSONRPC):
 
     @defer.inlineCallbacks
     def jsonrpc_search(self, query):
-        p = RPCProxy(url, 9999)
-        yield p.callRemote('search', query)
-        defer.returnValue("")
+        g = GlobalConfig()
+        result = list()
+        defers = list()
+        for reader in g.proxy.reader:
+            p = RPCProxy(path_join(reader, 'op'))
+            defers.append(p.callRemote('search', query))
+
+        try:
+            reader_result = yield defer.DeferredList(defers)
+            succeed = filter(lambda x: x[0], reader_result)
+            map(lambda x: result.extend(x[1]), succeed)
+        except Exception as e:
+            raise e
+
+        defer.returnValue(result)

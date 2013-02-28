@@ -28,7 +28,7 @@ DatabaseConfig = namedtuple('DatabaseConfig', ['host',
                                                'max_connections'])
 
 ServerConfig = namedtuple('ServerConfig', ['port', 'max_threads', 'role'])
-ProxyConfig = namedtuple('ServerConfig', ['port', 'max_threads'])
+ProxyConfig = namedtuple('ServerConfig', ['port', 'max_threads', 'writer', 'reader'])
 
 ModelConfig = namedtuple('ModelConfig', ['model', 'member'])
 
