@@ -94,20 +94,22 @@ class PostgreSQLBackend(object):
         b.schema = b.g.database.schema
         b.t_object = b.g.database.table
         b.s_object = '.'.join([b.schema, b.t_object])
+        b.conn = None
 
         return b
 
-    def start(self, *args, **kwargs):
+    def start(self, initdb=False):
         dsn = " ".join(
             map(lambda x: "%s=%s" % (x, getattr(self.g.database, x)),
                 filter(lambda x: getattr(self.g.database, x),
                     ['host', 'port', 'user', 'password', 'dbname'])))
         self.conn = txpostgres.ConnectionPool(None, dsn)
         d = self.conn.start()
-        d.addCallback(self._init_extension)
-        d.addCallback(self._init_schema)
-        d.addCallback(self._init_table)
-        d.addCallback(self._init_table_constraint)
+        if initdb:
+            d.addCallback(self._init_extension)
+            d.addCallback(self._init_schema)
+            d.addCallback(self._init_table)
+            d.addCallback(self._init_table_constraint)
         #d.addErrback(lambda x: fatal_out('database connection error'))
         return d
 

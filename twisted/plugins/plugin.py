@@ -13,8 +13,6 @@ from twisted.plugin import IPlugin
 from twisted.application.service import IServiceMaker
 from twisted.application import internet
 
-from almar.util import banner
-
 
 class AlmarServiceOptions(usage.Options):
     optParameters = [
@@ -35,37 +33,21 @@ class AlmarServiceMaker(object):
     options = AlmarServiceOptions
 
     def makeService(self, options):
+        from almar import _init as almar_init
 
-        from almar.global_config import GlobalConfig
-        g = GlobalConfig.create_instance(options['config'])
+        # get site and default port
+        port_no, site = almar_init(options['config'],
+                                   mode=('normal', 'proxy')[options['proxy']])
 
-        # configure reactor
-        from twisted.internet import reactor
-        reactor.suggestThreadPoolSize(int(g.server.max_threads))
+        # override port use user specified option
+        if 'port' in options and options['port']:
+            port_no = int(options['port'])
 
-        # configure database
-        from txpostgres import txpostgres
-        txpostgres.ConnectionPool.min = int(g.database.min_connections)
-        txpostgres.ConnectionPool.max = int(g.database.max_connections)
-
+        # start database connection
         from almar.backend.postgresql import PostgreSQLBackend as Backend
-        b = Backend.create_instance(g.database)
+        b = Backend()
         b.start()
 
-        # configure web service
-        from almar.service import worker_root, proxy_root
-        from twisted.web import server
-
-        if options['proxy']:
-            banner("RUNNING IN PROXY MODE")
-            site = server.Site(proxy_root)
-            port = int(options["port"] or g.proxy.port)
-        else:
-            banner("RUNNING IN WORKER MODE")
-            site = server.Site(worker_root)
-            port = int(options["port"] or g.server.port)
-
-        return internet.TCPServer(port, site)
-
+        return internet.TCPServer(port_no, site)
 
 serviceMaker = AlmarServiceMaker()

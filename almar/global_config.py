@@ -37,7 +37,7 @@ MemberConfig = namedtuple('MemberConfig', ['name', 'datatype', 'flag'])
 
 class GlobalConfig(object):
 
-    __slots__ = ['database', 'server', 'model']
+    __slots__ = ['database', 'server', 'model', 'server_mode']
     __instance__ = None
 
     def __new__(cls, *args, **kw):
@@ -115,7 +115,6 @@ class GlobalConfig(object):
                parents[1:], model)
 
         return (model['model'], model)
-
 
 if __name__ == '__main__':
     base = "~/devel/almar"

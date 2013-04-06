@@ -26,45 +26,48 @@ class ObjectRESTService(resource.Resource):
         self.path = path
         self.method = method
 
-    def cancel(self, err, d):
+    def cancel(self, err, request, d):
         warn_out("Cancelling current request.")
         d.cancel()
 
     def finalize(self, value, request):
+        from os import getpid
 
         request.setHeader('Content-Type', 'application/json; charset=UTF-8')
 
         if isinstance(value, Failure):
             request.setResponseCode(500)
             if isinstance(value.value, exception.AlmarErrorBase):
-                error = dict(message=str(value.value))
+                error = dict(message=str(value.value), pid=getpid())
                 response = dict(error=error)
             else:
                 error = dict(data=value.getTraceback(),
-                             message=str(value.value))
+                             message=str(value.value),
+                             pid=getpid())
                 response = dict(error=error)
         else:
             response = dict(result=value)
             request.setResponseCode(200)
 
         request.write(json_encode(response))
-        request.finish()
+        if not request._disconnected:
+            request.finish()
 
     def render_GET(self, request):
         d = self.async_GET(request)
-        request.notifyFinish().addErrback(self.cancel, d)
+        request.notifyFinish().addErrback(self.cancel, request, d)
         d.addBoth(self.finalize, request)
         return NOT_DONE_YET
 
     def render_POST(self, request):
         d = self.async_POST(request)
-        request.notifyFinish().addErrback(self.cancel, d)
+        request.notifyFinish().addErrback(self.cancel, request, d)
         d.addBoth(self.finalize, request)
         return NOT_DONE_YET
 
     def render_DELETE(self, request):
         d = self.async_DELETE(request)
-        request.notifyFinish().addErrback(self.cancel, d)
+        request.notifyFinish().addErrback(self.cancel, request, d)
         d.addBoth(self.finalize, request)
         return NOT_DONE_YET
 

@@ -5,8 +5,8 @@ database:
     user: jianingy
     schema: almartest
     table: object
-    min_connections: 4
-    max_connections: 8
+    min_connections: 1
+    max_connections: 4
 
 server:
     port: 9999

@@ -9,29 +9,26 @@ __author__ = 'Jianing Yang <jianingy.yang AT gmail DOT com>'
 
 __all__ = ['debug_out', 'warn_out', 'error_out', 'out']
 
-import sys
+from twisted.python import log
+from logging import DEBUG, WARNING, ERROR, CRITICAL
+from sys import exit
 
 
 def debug_out(s):
-    print >>sys.stderr, "DEBUG:", s
-
+    log.msg(s, level=DEBUG)
 
 def warn_out(s):
-    print >>sys.stderr, s
-
+    log.msg(s, level=WARNING)
 
 def error_out(s):
-    print >>sys.stderr, s
-
+    log.msg(s, level=ERROR)
 
 def out(s):
-    print >>sys.stderr, s
-
+    log.msg(s)
 
 def fatal_out(s):
-    print >>sys.stderr, "FATAL:", s
-    sys.exit(111)
-
+    log.msg(s, level=CRITICAL)
+    exit(111)
 
 def pretty_out(s):
     import pprint
