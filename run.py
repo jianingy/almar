@@ -53,9 +53,10 @@ class ProcessProtocol(protocol.ProcessProtocol):
 
 class Options(usage.Options):
     optParameters = [
-        ['config',    'c', 'etc/production.yaml',   'path to configuration.'],
-        ['port',      'p', None,                    'listening port'],
-        ['process',   'n', '4',                     '# of processes'],
+        ['config', 'c', 'etc/production.yaml', 'path to configuration.'],
+        ['bind', 'b', '0.0.0.0', 'listening address'],
+        ['port', 'p', None, 'listening port'],
+        ['process', 'n', '4', '# of processes'],
     ]
 
     optFlags = [
@@ -79,7 +80,7 @@ def main(options):
         from procname import setprocname
         setprocname('almar master %-100s' % '')
 
-        port = reactor.listenTCP(port_no, site)
+        port = reactor.listenTCP(port_no, site, interface=options['bind'])
         for i in range(int(options['process'])):
             environ['ALMAR_SOCKET_FD'] = str(port.fileno())
             environ['ALMAR_WORKER_ID'] = str(i)
@@ -98,16 +99,20 @@ def main(options):
         worker_id = int(environ['ALMAR_WORKER_ID'])
         # Another process created the port, just start listening on it.
         from procname import setprocname
-        setprocname('almar worker #%s%-100s' % (environ['ALMAR_WORKER_ID'], ''))
+        setprocname('almar worker #%s%-99s' % (environ['ALMAR_WORKER_ID'], ''))
 
-        fd = int(environ['ALMAR_SOCKET_FD'])
-        port = reactor.adoptStreamPort(fd, AF_INET, site)
-        site.resource.set_instance(port)
+        def _start_service(conn):
+            fd = int(environ['ALMAR_SOCKET_FD'])
+            port = reactor.adoptStreamPort(fd, AF_INET, site)
+            site.resource.port_instance = port
 
-        # start database connection
+        # first, start database connection
         from almar.backend.postgresql import PostgreSQLBackend as Backend
         b = Backend()
-        b.start(initdb=(False, True)[worker_id == 0])
+        d = b.start(initdb=(False, True)[worker_id == 0])
+
+        # start service after database ready
+        d.addCallback(_start_service)
 
     reactor.run()
     exit(0)

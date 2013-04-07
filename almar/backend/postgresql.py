@@ -113,6 +113,9 @@ class PostgreSQLBackend(object):
         #d.addErrback(lambda x: fatal_out('database connection error'))
         return d
 
+    def stop(self):
+        return self.conn.close()
+
     ##########################################################################
     #
     # INIT ROUTINES

@@ -6,7 +6,7 @@ import random
 import unittest
 import psycopg2
 
-SERVICE_BASE = 'http://localhost:9999/op'
+SERVICE_BASE = 'http://localhost:55555/op'
 
 if __name__ == '__main__':
     from jsonrpc import ServiceProxy

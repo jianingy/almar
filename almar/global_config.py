@@ -28,7 +28,7 @@ DatabaseConfig = namedtuple('DatabaseConfig', ['host',
                                                'max_connections'])
 
 ServerConfig = namedtuple('ServerConfig', ['port', 'max_threads', 'role'])
-ProxyConfig = namedtuple('ServerConfig', ['port', 'max_threads', 'writer', 'reader'])
+ProxyConfig = namedtuple('ServerConfig', ['port', 'max_threads'])
 
 ModelConfig = namedtuple('ModelConfig', ['model', 'member'])
 
@@ -37,7 +37,8 @@ MemberConfig = namedtuple('MemberConfig', ['name', 'datatype', 'flag'])
 
 class GlobalConfig(object):
 
-    __slots__ = ['database', 'server', 'model', 'server_mode']
+    __slots__ = ['database', 'server', 'model', 'server_mode',
+                 'proxy', 'searcher']
     __instance__ = None
 
     def __new__(cls, *args, **kw):
@@ -61,6 +62,9 @@ class GlobalConfig(object):
 
         if 'proxy' in bc:
             G.proxy = G._build_sub_config(ProxyConfig, bc['proxy'])
+
+        if 'searcher' in bc:
+            G.searcher = G._build_searcher_config(ProxyConfig, bc['searcher'])
 
         models = reduce(lambda x, y: x.update(y) or x,
                         map(lambda x: dict(G._build_model_config(x)),
@@ -97,6 +101,16 @@ class GlobalConfig(object):
                    dict(model=model['model'], member=dict(member)))
 
     @staticmethod
+    def _build_searcher_config(self, searchers):
+        result = dict()
+        for name, searcher in searchers.iteritems():
+            value = dict(url=searcher['url'], name=name)
+            index = xrange(*map(lambda x: int(x),
+                                searcher['range'].split('-')))
+            result[index] = value
+        return result
+
+    @staticmethod
     def _merge_inherited_member(name, models):
         from copy import deepcopy
 
@@ -123,3 +137,4 @@ if __name__ == '__main__':
     pretty_out(g.database)
     pretty_out(g.server)
     pretty_out(g.proxy)
+    pretty_out(g.searcher)

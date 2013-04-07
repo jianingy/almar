@@ -7,6 +7,7 @@
 
 __author__ = 'Jianing Yang <jianingy.yang AT gmail DOT com>'
 
+from twisted.internet.defer import Deferred, maybeDeferred
 from twisted.web import resource
 from twisted.internet import reactor
 
@@ -34,25 +35,25 @@ class AlmarRootResource(resource.Resource):
         request.notifyFinish().addCallback(self._count, request)
         return resource.Resource.getChildWithDefault(self, path, request)
 
-    def set_instance(self, port):
-        self.port_instance = port
+    def _exit(self, err):
+        #from sys import exit
+        if self.running == 0 and reactor.running:
+            reactor.stop()
 
     def _count(self, result, request):
         self.running = self.running - 1
 
         if self.request_left == 0:
-            self.port_instance.stopListening()
-            if self.running == 0:
-                # XXX: find a graceful way to exit.
-                #      directly stop cause connections lose.
-                reactor.stop()
+            d = maybeDeferred(self.port_instance.stopListening)
+            d.addBoth(self._exit)
         else:
             self.request_left = self.request_left - 1
 
-worker_root = AlmarRootResource(5)
+
+worker_root = resource.Resource()
 worker_root.putChild('op', OperationService())
 worker_root.putChild('rest', ObjectRESTProxyService())
 worker_root.putChild('object', ObjectJSONRPCProxyService())
 
-proxy_root = AlmarRootResource(5)
+proxy_root = resource.Resource()
 proxy_root.putChild('op', AlmarProxyService())

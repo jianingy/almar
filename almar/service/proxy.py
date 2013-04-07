@@ -13,11 +13,23 @@ from txjsonrpc.web.jsonrpc import Proxy as RPCProxy
 from txjsonrpc.jsonrpclib import Fault
 from almar.global_config import GlobalConfig
 from os.path import join as path_join
+from collections import defaultdict
 
 
 class AlmarProxyService(jsonrpc.JSONRPC):
 
     addSlash = True
+
+    def path_hash(self, s):
+        return reduce(lambda x, y: (x + y) % 128, map(lambda x: ord(x), s))
+
+    def find_searcher_by_path(self, path):
+        # XXX: find a good hash function
+        hash_id = self.path_hash(path)
+        g = GlobalConfig()
+        for range_, searcher in g.searcher.iteritems():
+            if hash_id in range_:
+                return range_
 
     def jsonrpc_echo(self, s):
         return str(s)
@@ -32,14 +44,41 @@ class AlmarProxyService(jsonrpc.JSONRPC):
         g = GlobalConfig()
         result = list()
         defers = list()
-        for reader in g.proxy.reader:
-            p = RPCProxy(path_join(reader, 'op'))
+        for range_, searcher in g.searcher.iteritems():
+            url = searcher['url']
+            p = RPCProxy(path_join(url, 'op'))
             defers.append(p.callRemote('search', query))
 
         try:
             reader_result = yield defer.DeferredList(defers)
             succeed = filter(lambda x: x[0], reader_result)
             map(lambda x: result.extend(x[1]), succeed)
+        except Exception as e:
+            raise e
+
+        defer.returnValue(result)
+
+    @defer.inlineCallbacks
+    def jsonrpc_upsert(self, lst):
+        g = GlobalConfig()
+        splitted = defaultdict(list)
+        defers = list()
+
+        for item in lst:
+            range_ = self.find_searcher_by_path(item['path'])
+            splitted[range_].append(item)
+
+        for range_, searcher in g.searcher.iteritems():
+            url = g.searcher[range_]['url']
+            p = RPCProxy(path_join(url, 'op'))
+            if splitted[range_]:
+                defers.append(p.callRemote('upsert', splitted[range_]))
+
+        try:
+            writer_result = yield defer.DeferredList(defers)
+            affected = filter(lambda x: x[0], writer_result)
+            result = reduce(lambda x, y: x + y,
+                            map(lambda x: x[1]['affected'], affected))
         except Exception as e:
             raise e
 
