@@ -1,0 +1,13 @@
+# This is a multipkg build spec. For more information, please
+# refer to http://github.com/jianingy/multipkg
+---
+default:
+  name: almar
+  version: '0.1'
+  summary: a distributed database wrapper based on postgresql
+
+rpm:
+  arch: noarch
+
+deb:
+  arch: all
