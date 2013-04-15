@@ -21,7 +21,8 @@ class AlmarProxyService(jsonrpc.JSONRPC):
     addSlash = True
 
     def path_hash(self, s):
-        return reduce(lambda x, y: (x + y) % 128, map(lambda x: ord(x), s))
+        # sdbm's hash function
+        reduce(lambda hash_, c: (hash_ << 6) + (hash_ << 16) - hash_ + ord(c), s)
 
     def find_searcher_by_path(self, path):
         # XXX: find a good hash function
