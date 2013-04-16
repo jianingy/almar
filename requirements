@@ -4,3 +4,4 @@ txpostgres
 PyYAML
 txJSON-RPC
 procname
+ujson
