@@ -9,14 +9,11 @@ __author__ = 'Jianing Yang <jianingy.yang AT gmail DOT com>'
 
 try:
     from twisted.internet import epollreactor as current_reactor
-    print "reactor: epoll"
 except:
     try:
         from twisted.internet import kqreactor as current_reactor
-        print "reactor: kqueue"
     except:
         from twisted.internet import selectreactor as current_reactor
-        print "reactor: select"
 
 current_reactor.install()
 
