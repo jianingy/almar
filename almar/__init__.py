@@ -15,14 +15,6 @@ def _init(config, mode='normal'):
     from almar.global_config import GlobalConfig, MODE_PROXY, MODE_WORKER
     g = GlobalConfig.create_instance(config)
 
-    # configure database
-    from txpostgres import txpostgres
-    txpostgres.ConnectionPool.min = int(g.database.min_connections)
-    txpostgres.ConnectionPool.max = int(g.database.max_connections)
-
-    from almar.backend.postgresql import PostgreSQLBackend as Backend
-    Backend.create_instance(g.database)
-
     # configure web service
     from almar.service import worker_root, proxy_root
     from twisted.web import server
@@ -40,4 +32,13 @@ def _init(config, mode='normal'):
         # configure reactor
         reactor.suggestThreadPoolSize(int(g.server.max_threads))
         g.server_mode = MODE_WORKER
+
+        # configure database
+        from txpostgres import txpostgres
+        txpostgres.ConnectionPool.min = int(g.database.min_connections)
+        txpostgres.ConnectionPool.max = int(g.database.max_connections)
+
+        from almar.backend.postgresql import PostgreSQLBackend as Backend
+        Backend.create_instance(g.database)
+
         return int(g.server.port), server.Site(worker_root)

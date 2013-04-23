@@ -88,7 +88,7 @@ def main(options):
         # Create a new listening port and several other processes to help out.
         out('using reactor: %s' % reactor)
         from procname import setprocname
-        setprocname('almar master %-100s' % '')
+        setprocname('almar %s master\x00' % ('searcher', 'proxy')[options['proxy']])
 
         port = reactor.listenTCP(port_no, site, interface=options['bind'])
         for i in range(int(options['process'])):
@@ -109,7 +109,8 @@ def main(options):
         worker_id = int(environ['ALMAR_WORKER_ID'])
         # Another process created the port, just start listening on it.
         from procname import setprocname
-        setprocname('almar worker #%s' % environ['ALMAR_WORKER_ID'])
+        setprocname('almar %s #%s\x00' % (('searcher', 'proxy')[options['proxy']],
+                                          environ['ALMAR_WORKER_ID']))
 
         def _start_service(conn):
             fd = int(environ['ALMAR_SOCKET_FD'])
