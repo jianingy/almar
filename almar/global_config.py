@@ -58,20 +58,31 @@ class GlobalConfig(object):
             bc = yaml_load(yaml.read())
 
         G.database = G._build_sub_config(DatabaseConfig, bc['database'])
-        G.server = G._build_sub_config(ServerConfig, bc['server'])
+
+        if 'server' in bc:
+            G.server = G._build_sub_config(ServerConfig, bc['server'])
+        else:
+            G.server = None
 
         if 'proxy' in bc:
             G.proxy = G._build_sub_config(ProxyConfig, bc['proxy'])
+        else:
+            G.proxy = None
 
         if 'searcher' in bc:
             G.searcher = G._build_searcher_config(ProxyConfig, bc['searcher'])
+        else:
+            G.searcher = None
 
-        models = reduce(lambda x, y: x.update(y) or x,
-                        map(lambda x: dict(G._build_model_config(x)),
-                            bc['model']))
+        if 'model' in bc:
+            models = reduce(lambda x, y: x.update(y) or x,
+                            map(lambda x: dict(G._build_model_config(x)),
+                                bc['model']))
 
-        G.model = dict(map(lambda x: G._merge_inherited_member(x, models),
-                           models.keys()))
+            G.model = dict(map(lambda x: G._merge_inherited_member(x, models),
+                               models.keys()))
+        else:
+                G.model = None
 
         return g
 

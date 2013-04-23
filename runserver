@@ -129,6 +129,10 @@ def main(options):
 
 
 if __name__ == '__main__':
+    import sys
+    from twisted.python import log
+    log.startLogging(sys.stdout)
+
     options = Options()
     options.parseOptions()
     main(options)

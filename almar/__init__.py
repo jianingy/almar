@@ -7,14 +7,13 @@
 
 __author__ = 'Jianing Yang <jianingy.yang AT gmail DOT com>'
 
+from debug import fatal_out
+from twisted.internet import reactor
+
 
 def _init(config, mode='normal'):
     from almar.global_config import GlobalConfig, MODE_PROXY, MODE_WORKER
     g = GlobalConfig.create_instance(config)
-
-    # configure reactor
-    from twisted.internet import reactor
-    reactor.suggestThreadPoolSize(int(g.server.max_threads))
 
     # configure database
     from txpostgres import txpostgres
@@ -30,7 +29,15 @@ def _init(config, mode='normal'):
 
     if mode == 'proxy':
         g.server_mode = MODE_PROXY
+        if not g.proxy or not g.searcher:
+            fatal_out('proxy configuration is invalid')
+        # configure reactor
+        reactor.suggestThreadPoolSize(int(g.proxy.max_threads))
         return int(g.proxy.port), server.Site(proxy_root)
     else:
+        if not g.server or not g.model:
+            fatal_out('server configuration is invalid')
+        # configure reactor
+        reactor.suggestThreadPoolSize(int(g.server.max_threads))
         g.server_mode = MODE_WORKER
         return int(g.server.port), server.Site(worker_root)
