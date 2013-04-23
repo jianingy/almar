@@ -1,0 +1,7 @@
+#!/bin/sh
+
+INSTALLDIR="$DESTDIR/opt/almar-proxy"
+
+mkdir -p $INSTALLDIR || exit 111
+cp -a * $INSTALLDIR || exit 111
+exit 0
