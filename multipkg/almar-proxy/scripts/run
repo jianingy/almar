@@ -2,4 +2,4 @@
 VIRTUALENV=/home/admin/virt
 INSTALLDIR=/opt/almar-proxy
 source $VIRTUALENV/bin/activate
-exec python $INSTALLDIR/runserver -x -p 55555 -c /opt/almar-proxy/etc/prod.yaml
+exec python $INSTALLDIR/runserver -x -p 55555 -c $INSTALLDIR/etc/prod.yaml
