@@ -35,7 +35,7 @@ def _init(config, mode='normal'):
         reactor.suggestThreadPoolSize(int(g.proxy.max_threads))
         return int(g.proxy.port), server.Site(proxy_root)
     else:
-        if not g.server or not g.model:
+        if not g.server or not g.model or not g.database:
             fatal_out('server configuration is invalid')
         # configure reactor
         reactor.suggestThreadPoolSize(int(g.server.max_threads))

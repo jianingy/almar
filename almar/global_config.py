@@ -57,7 +57,10 @@ class GlobalConfig(object):
         with open(expanduser(filename)) as yaml:
             bc = yaml_load(yaml.read())
 
-        G.database = G._build_sub_config(DatabaseConfig, bc['database'])
+        if 'database' in bc:
+            G.database = G._build_sub_config(DatabaseConfig, bc['database'])
+        else:
+            G.database = None
 
         if 'server' in bc:
             G.server = G._build_sub_config(ServerConfig, bc['server'])
