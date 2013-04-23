@@ -25,7 +25,7 @@ from sys import argv as ARGV, executable, exit
 from socket import AF_INET
 from copy import deepcopy
 
-from twisted.internet import reactor
+from twisted.internet import reactor, defer
 from twisted.internet import protocol
 from twisted.python import usage
 
@@ -109,18 +109,20 @@ def main(options):
         worker_id = int(environ['ALMAR_WORKER_ID'])
         # Another process created the port, just start listening on it.
         from procname import setprocname
-        setprocname('almar worker #%s%-99s' % (environ['ALMAR_WORKER_ID'], ''))
+        setprocname('almar worker #%s' % environ['ALMAR_WORKER_ID'])
 
         def _start_service(conn):
             fd = int(environ['ALMAR_SOCKET_FD'])
             port = reactor.adoptStreamPort(fd, AF_INET, site)
             site.resource.port_instance = port
 
-        # first, start database connection
-        from almar.backend.postgresql import PostgreSQLBackend as Backend
-        b = Backend()
-        d = b.start(initdb=(False, True)[worker_id == 0])
-
+        if not options['proxy']:
+            # first, start database connection
+            from almar.backend.postgresql import PostgreSQLBackend as Backend
+            b = Backend()
+            d = b.start(initdb=(False, True)[worker_id == 0])
+        else:
+            d = defer.succeed(True)
         # start service after database ready
         d.addCallback(_start_service)
 
