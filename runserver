@@ -32,6 +32,13 @@ from twisted.python import usage
 from almar import _init as almar_init
 from almar.debug import out
 
+CHILD_PROCESSES = list()
+
+def signal_handler(signum, frame):
+    from signal import SIGINT
+    print "Receivied exit signal. Quiting now."
+    map(lambda x: x.signalProcess(SIGINT), CHILD_PROCESSES)
+    reactor.stop()
 
 class ProcessProtocol(protocol.ProcessProtocol):
 
@@ -97,12 +104,12 @@ def main(options):
             new_args = [executable]
             new_args.extend(ARGV)
             fds = {0: 0, 1: 1, 2: 2, port.fileno(): port.fileno()}
-            reactor.spawnProcess(ProcessProtocol(environ, new_args),
-                                 executable,
-                                 new_args,
-                                 childFDs=fds,
-                                 env=environ)
-
+            worker = reactor.spawnProcess(ProcessProtocol(environ, new_args),
+                                          executable,
+                                          new_args,
+                                          childFDs=fds,
+                                          env=environ)
+            CHILD_PROCESSES.append(worker)
         # master won't accept clients
         reactor.removeReader(port)
     else:
@@ -135,6 +142,11 @@ if __name__ == '__main__':
     import sys
     from twisted.python import log
     log.startLogging(sys.stdout)
+
+    # register signal handler
+    from signal import signal, SIGTERM, SIGINT
+    signal(SIGTERM, signal_handler)
+    signal(SIGINT, signal_handler)
 
     options = Options()
     options.parseOptions()
