@@ -22,9 +22,9 @@ class AlmarProxyService(jsonrpc.JSONRPC):
 
     def path_hash(self, s):
         # sdbm's hash function
-        #print "string = ", s
+#        print "string = ", s
         hash_id = reduce(lambda hash_, c: (hash_ << 6) + (hash_ << 16) - hash_ + ord(c), s, 0) % 128
-        #print "hash_id = ", hash_id
+#        print "hash_id = ", hash_id
         return hash_id
 
     def find_searcher_by_path(self, path):
@@ -82,7 +82,7 @@ class AlmarProxyService(jsonrpc.JSONRPC):
             writer_result = yield defer.DeferredList(defers)
             affected = filter(lambda x: x[0], writer_result)
             result = reduce(lambda x, y: x + y,
-                            map(lambda x: x[1]['affected'], affected))
+                            map(lambda x: x[1]['affected'], affected), 0)
         except Exception as e:
             raise e
 
