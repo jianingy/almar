@@ -22,7 +22,7 @@ class AlmarProxyService(jsonrpc.JSONRPC):
 
     def path_hash(self, s):
         # sdbm's hash function
-        reduce(lambda hash_, c: (hash_ << 6) + (hash_ << 16) - hash_ + ord(c), s)
+        reduce(lambda hash_, c: (hash_ << 6) + (hash_ << 16) - hash_ + ord(c), s, 0) % 128
 
     def find_searcher_by_path(self, path):
         # XXX: find a good hash function
