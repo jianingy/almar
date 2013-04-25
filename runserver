@@ -38,7 +38,8 @@ def signal_handler(signum, frame):
     from signal import SIGINT
     print "Receivied exit signal. Quiting now."
     map(lambda x: x.signalProcess(SIGINT), CHILD_PROCESSES)
-    reactor.stop()
+    if reactor.running:
+        reactor.stop()
 
 class ProcessProtocol(protocol.ProcessProtocol):
 
