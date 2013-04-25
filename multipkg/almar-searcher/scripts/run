@@ -2,4 +2,4 @@
 VIRTUALENV=/home/admin/virt
 INSTALLDIR=/opt/almar-searcher
 source $VIRTUALENV/bin/activate
-exec python $INSTALLDIR/runserver -x -p 44544 -c $INSTALLDIR/etc/prod.yaml
+exec python $INSTALLDIR/runserver -p 44544 -c $INSTALLDIR/etc/prod.yaml
