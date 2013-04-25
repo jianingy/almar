@@ -513,10 +513,10 @@ class PostgreSQLBackend(object):
                     lhs = lhs.strip('_')
                     if term == '==':
                         where_clause = \
-                            "lower(\"%s\") = lower(E'%s')" % (lhs, rhs)
+                            "\"%s\" = lower(E'%s')" % (lhs, rhs)
                     elif term == '!=':
                         where_clause = \
-                            "lower(\"%s\") != lower(E'%s')" % (lhs, rhs)
+                            "\"%s\" != lower(E'%s')" % (lhs, rhs)
                     elif term == '===':
                         where_clause = "\"%s\" = E'%s'" % (lhs, rhs)
                     elif term == '!==':
