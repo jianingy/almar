@@ -88,3 +88,31 @@ class AlmarProxyService(jsonrpc.JSONRPC):
             raise e
 
         defer.returnValue(result)
+
+    @defer.inlineCallbacks
+    def jsonrpc_get(self, lst, method='self'):
+        g = GlobalConfig()
+        splitted = defaultdict(list)
+        defers = list()
+
+        for item in lst:
+            range_ = self.find_searcher_by_path(item)
+            splitted[range_].append(item)
+
+        for range_, searcher in g.searcher.iteritems():
+            url = g.searcher[range_]['url']
+            p = RPCProxy(path_join(url, 'op'))
+            if splitted[range_]:
+                defers.append(p.callRemote('get', splitted[range_], method))
+
+        try:
+            reader_result = yield defer.DeferredList(defers)
+            returns = map(lambda x: x[1], filter(lambda x: x[0],
+                                                 reader_result))
+            # http://stackoverflow.com/questions/952914/making-a-flat-list-out-of-list-of-lists-in-python
+            result = [item for sublist in returns for item in sublist]
+
+        except Exception as e:
+            raise e
+
+        defer.returnValue(result)
