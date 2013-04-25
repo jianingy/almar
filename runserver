@@ -122,6 +122,7 @@ def main(options):
 
         def _start_service(conn):
             fd = int(environ['ALMAR_SOCKET_FD'])
+            out('adopting parent fd')
             port = reactor.adoptStreamPort(fd, AF_INET, site)
             site.resource.port_instance = port
 
@@ -129,6 +130,7 @@ def main(options):
             # first, start database connection
             from almar.backend.postgresql import PostgreSQLBackend as Backend
             b = Backend()
+            out('connecting to backend database')
             d = b.start(initdb=(False, True)[worker_id == 0])
         else:
             d = defer.succeed(True)

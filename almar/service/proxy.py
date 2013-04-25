@@ -15,6 +15,8 @@ from almar.global_config import GlobalConfig
 from os.path import join as path_join
 from collections import defaultdict
 
+from almar.debug import out
+
 
 class AlmarProxyService(jsonrpc.JSONRPC):
 
@@ -22,9 +24,7 @@ class AlmarProxyService(jsonrpc.JSONRPC):
 
     def path_hash(self, s):
         # sdbm's hash function
-#        print "string = ", s
         hash_id = reduce(lambda hash_, c: (hash_ << 6) + (hash_ << 16) - hash_ + ord(c), s, 0) % 128
-#        print "hash_id = ", hash_id
         return hash_id
 
     def find_searcher_by_path(self, path):
@@ -50,6 +50,7 @@ class AlmarProxyService(jsonrpc.JSONRPC):
         defers = list()
         for range_, searcher in g.searcher.iteritems():
             url = searcher['url']
+            out('searcher: ' + url)
             p = RPCProxy(path_join(url, 'op'))
             defers.append(p.callRemote('search', query))
 

@@ -23,6 +23,8 @@ OPERS = {
     "^": Operator(p=3, assoc="L"),
     "~": Operator(p=3, assoc="L"),
     "!~": Operator(p=3, assoc="L"),
+    "@>": Operator(p=3, assoc="L"),
+    "<@": Operator(p=3, assoc="L"),
     "<": Operator(p=4, assoc="L"),
     "<=": Operator(p=4, assoc="L"),
     ">": Operator(p=4, assoc="L"),
@@ -32,7 +34,7 @@ OPERS = {
 LOGIC_OPERS = ("OR", "AND")
 QUOTES      = ("'", '"')
 WHITESPACES = (" ", "\t", "\r", "\n")
-OPCHARS     = ("!", "=", "^", "~", ">", "<")
+OPCHARS     = ("!", "=", "^", "~", ">", "<", "@")
 
 
 class ParseError(Exception):
