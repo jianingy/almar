@@ -17,18 +17,23 @@ from sys import exit
 def debug_out(s):
     log.msg(s, level=DEBUG)
 
+
 def warn_out(s):
     log.msg(s, level=WARNING)
+
 
 def error_out(s):
     log.msg(s, level=ERROR)
 
+
 def out(s):
     log.msg(s)
+
 
 def fatal_out(s):
     log.msg(s, level=CRITICAL)
     exit(111)
+
 
 def pretty_out(s):
     import pprint

@@ -15,6 +15,8 @@ from almar.global_config import GlobalConfig
 from os.path import join as path_join
 from collections import defaultdict
 
+from almar.debug import out
+
 
 class AlmarProxyService(jsonrpc.JSONRPC):
 
@@ -22,7 +24,8 @@ class AlmarProxyService(jsonrpc.JSONRPC):
 
     def path_hash(self, s):
         # sdbm's hash function
-        reduce(lambda hash_, c: (hash_ << 6) + (hash_ << 16) - hash_ + ord(c), s)
+        hash_id = reduce(lambda hash_, c: (hash_ << 6) + (hash_ << 16) - hash_ + ord(c), s, 0) % 128
+        return hash_id
 
     def find_searcher_by_path(self, path):
         # XXX: find a good hash function
@@ -47,6 +50,7 @@ class AlmarProxyService(jsonrpc.JSONRPC):
         defers = list()
         for range_, searcher in g.searcher.iteritems():
             url = searcher['url']
+            out('searcher: ' + url)
             p = RPCProxy(path_join(url, 'op'))
             defers.append(p.callRemote('search', query))
 
@@ -79,7 +83,35 @@ class AlmarProxyService(jsonrpc.JSONRPC):
             writer_result = yield defer.DeferredList(defers)
             affected = filter(lambda x: x[0], writer_result)
             result = reduce(lambda x, y: x + y,
-                            map(lambda x: x[1]['affected'], affected))
+                            map(lambda x: x[1]['affected'], affected), 0)
+        except Exception as e:
+            raise e
+
+        defer.returnValue(result)
+
+    @defer.inlineCallbacks
+    def jsonrpc_get(self, lst, method='self'):
+        g = GlobalConfig()
+        splitted = defaultdict(list)
+        defers = list()
+
+        for item in lst:
+            range_ = self.find_searcher_by_path(item)
+            splitted[range_].append(item)
+
+        for range_, searcher in g.searcher.iteritems():
+            url = g.searcher[range_]['url']
+            p = RPCProxy(path_join(url, 'op'))
+            if splitted[range_]:
+                defers.append(p.callRemote('get', splitted[range_], method))
+
+        try:
+            reader_result = yield defer.DeferredList(defers)
+            returns = map(lambda x: x[1], filter(lambda x: x[0],
+                                                 reader_result))
+            # http://stackoverflow.com/questions/952914/making-a-flat-list-out-of-list-of-lists-in-python
+            result = [item for sublist in returns for item in sublist]
+
         except Exception as e:
             raise e
 

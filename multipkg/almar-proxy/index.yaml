@@ -1,0 +1,8 @@
+# This is a multipkg build spec. For more information, please
+# refer to http://github.com/jianingy/multipkg
+---
+default:
+  name: almar-proxy
+  version: 0.1
+  summary: almar proxy
+  git: http://github.com/jianingy/almar

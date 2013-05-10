@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# filename   : almarctl.py
+# filename   : runserver
 # created at : 2013-04-04 21:27:12
 # author     : Jianing Yang <jianingy.yang AT gmail DOT com>
 
@@ -9,11 +9,14 @@ __author__ = 'Jianing Yang <jianingy.yang AT gmail DOT com>'
 
 try:
     from twisted.internet import epollreactor as current_reactor
+    reactor = 'epoll'
 except:
     try:
         from twisted.internet import kqreactor as current_reactor
+        reactor = 'kqueue'
     except:
         from twisted.internet import selectreactor as current_reactor
+        reactor = 'select'
 
 current_reactor.install()
 
@@ -22,13 +25,21 @@ from sys import argv as ARGV, executable, exit
 from socket import AF_INET
 from copy import deepcopy
 
-from twisted.internet import reactor
+from twisted.internet import reactor, defer
 from twisted.internet import protocol
 from twisted.python import usage
 
 from almar import _init as almar_init
 from almar.debug import out
 
+CHILD_PROCESSES = list()
+
+def signal_handler(signum, frame):
+    from signal import SIGINT
+    print "Receivied exit signal. Quiting now."
+    map(lambda x: x.signalProcess(SIGINT), CHILD_PROCESSES)
+    if reactor.running:
+        reactor.stop()
 
 class ProcessProtocol(protocol.ProcessProtocol):
 
@@ -83,9 +94,9 @@ def main(options):
 
     if 'ALMAR_SOCKET_FD' not in environ or environ['ALMAR_SOCKET_FD'] is None:
         # Create a new listening port and several other processes to help out.
-
+        out('using reactor: %s' % reactor)
         from procname import setprocname
-        setprocname('almar master %-100s' % '')
+        setprocname('almar %s master\x00' % ('searcher', 'proxy')[options['proxy']])
 
         port = reactor.listenTCP(port_no, site, interface=options['bind'])
         for i in range(int(options['process'])):
@@ -94,30 +105,35 @@ def main(options):
             new_args = [executable]
             new_args.extend(ARGV)
             fds = {0: 0, 1: 1, 2: 2, port.fileno(): port.fileno()}
-            reactor.spawnProcess(ProcessProtocol(environ, new_args),
-                                 executable,
-                                 new_args,
-                                 childFDs=fds,
-                                 env=environ)
-
+            worker = reactor.spawnProcess(ProcessProtocol(environ, new_args),
+                                          executable,
+                                          new_args,
+                                          childFDs=fds,
+                                          env=environ)
+            CHILD_PROCESSES.append(worker)
         # master won't accept clients
         reactor.removeReader(port)
     else:
         worker_id = int(environ['ALMAR_WORKER_ID'])
         # Another process created the port, just start listening on it.
         from procname import setprocname
-        setprocname('almar worker #%s%-99s' % (environ['ALMAR_WORKER_ID'], ''))
+        setprocname('almar %s #%s\x00' % (('searcher', 'proxy')[options['proxy']],
+                                          environ['ALMAR_WORKER_ID']))
 
         def _start_service(conn):
             fd = int(environ['ALMAR_SOCKET_FD'])
+            out('adopting parent fd')
             port = reactor.adoptStreamPort(fd, AF_INET, site)
             site.resource.port_instance = port
 
-        # first, start database connection
-        from almar.backend.postgresql import PostgreSQLBackend as Backend
-        b = Backend()
-        d = b.start(initdb=(False, True)[worker_id == 0])
-
+        if not options['proxy']:
+            # first, start database connection
+            from almar.backend.postgresql import PostgreSQLBackend as Backend
+            b = Backend()
+            out('connecting to backend database')
+            d = b.start(initdb=(False, True)[worker_id == 0])
+        else:
+            d = defer.succeed(True)
         # start service after database ready
         d.addCallback(_start_service)
 
@@ -126,6 +142,15 @@ def main(options):
 
 
 if __name__ == '__main__':
+    import sys
+    from twisted.python import log
+    log.startLogging(sys.stdout)
+
+    # register signal handler
+    from signal import signal, SIGTERM, SIGINT
+    signal(SIGTERM, signal_handler)
+    signal(SIGINT, signal_handler)
+
     options = Options()
     options.parseOptions()
     main(options)

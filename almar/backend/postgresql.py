@@ -509,21 +509,14 @@ class PostgreSQLBackend(object):
                         "missing operand near '%s' at position %s"
                         % (vicinity, pos))
 
-                # use ILIKE instead of ~ for case-insensitive
-                if term in ("~", "!~"):
-                    term = ("ILIKE", "NOT ILIKE")[term == "!~"]
-                    # escape special characters of LIKE expression
-                    rhs.replace("%", "\%").replace("_", "\_")
-                    rhs = "%%%s%%" % rhs
-
                 if lhs.lower() in ('__model__', '__path__'):
                     lhs = lhs.strip('_')
                     if term == '==':
                         where_clause = \
-                            "lower(\"%s\") = lower(E'%s')" % (lhs, rhs)
+                            "lower(\"%s\"::text) = lower(E'%s')" % (lhs, rhs)
                     elif term == '!=':
                         where_clause = \
-                            "lower(\"%s\") != lower(E'%s')" % (lhs, rhs)
+                            "lower(\"%s\"::text) != lower(E'%s')" % (lhs, rhs)
                     elif term == '===':
                         where_clause = "\"%s\" = E'%s'" % (lhs, rhs)
                     elif term == '!==':
@@ -533,8 +526,11 @@ class PostgreSQLBackend(object):
                                          "lower('%s')" % quote(x),
                                          rhs.split(",")))
                         where_clause = "lower(%s) = ANY(ARRAY[%s])" % (lhs, _)
+                    elif term in ('@>', '<@', '~'):
+                        where_clause = "\"%s\" %s E'%s'" % (lhs, term, rhs)
                     elif term == "^":
-                        where_clause = "lower(\"%s\") LIKE lower(E'%s%%')" % (lhs, rhs)
+                        where_clause = ("lower(\"%s\") LIKE lower(E'%s%%')"
+                                        % (lhs, rhs))
                     else:
                         where_clause = "\"%s\" %s E'%s'" % (lhs, term, rhs)
                 elif lhs.lower() in ('id'):
@@ -570,6 +566,12 @@ class PostgreSQLBackend(object):
                     where_clause = "lower(value->E'%s') LIKE lower(E'%s')" \
                         % (lhs, rhs)
                 else:
+                    if term in ("~", "!~"):
+                        # use ILIKE instead of ~ for case-insensitive
+                        term = ("ILIKE", "NOT ILIKE")[term == "!~"]
+                        # escape special characters of LIKE expression
+                        rhs.replace("%", "\%").replace("_", "\_")
+                        rhs = "%%%s%%" % rhs
                     where_clause = "value->E'%s' %s E'%s'" % (lhs, term, rhs)
 
                 stack.append((where_clause, True))
