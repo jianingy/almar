@@ -15,86 +15,118 @@ from ujson import encode as json_encode, decode as json_decode
 from almar.debug import warn_out
 from almar.backend.postgresql import PostgreSQLBackend as Backend
 from almar import exception
+from collections import namedtuple
 
+RESTResult = namedtuple('RESTResult', ['code', 'content'])
 
-class ObjectRESTService(resource.Resource):
+class RESTService(resource.Resource):
 
     isLeaf = True
+
+    def get_postdata(self, request):
+        request.content.seek(0, 0)
+        content = request.content.read()
+
+        try:
+            if content:
+                data = json_decode(content)
+            else:
+                data = dict()
+        except ValueError:
+            raise exception.MalformedIncomingData('must be json')
+
+        if not isinstance(data, dict):
+            raise exception.MalformedIncomingData('must be json dict')
+
+        return data
+
+
+    def cancel(self, err, request, d):
+        warn_out("Cancelling current request.")
+        d.cancel()
+
+
+    def finalize(self, result, request):
+        from os import getpid
+
+        request.setHeader('Content-Type', 'application/json; charset=UTF-8')
+
+        if isinstance(result, Failure):
+            request.setResponseCode(500)
+            if isinstance(result.value, exception.AlmarErrorBase):
+                error = dict(message=str(result.value), pid=getpid())
+                response = dict(error=error)
+            else:
+                error = dict(data=result.getTraceback(),
+                             message=str(result.value),
+                             pid=getpid())
+                response = dict(error=error)
+        else:
+            response = dict(result=result.content)
+            request.setResponseCode(result.code)
+
+        request.write(json_encode(response))
+        if not request._disconnected:
+            request.finish()
+
+    @defer.inlineCallbacks
+    def render_aux(self, request, f):
+        self.postdata = self.get_postdata(request)
+        retval = yield f(request)
+        defer.returnValue(retval)
+
+    def render_GET(self, request):
+        d = self.render_aux(request, self.async_GET)
+        request.notifyFinish().addErrback(self.cancel, request, d)
+        d.addBoth(self.finalize, request)
+        return NOT_DONE_YET
+
+    def render_PUT(self, request):
+        d = self.render_aux(request, self.async_PUT)
+        request.notifyFinish().addErrback(self.cancel, request, d)
+        d.addBoth(self.finalize, request)
+        return NOT_DONE_YET
+
+    def render_POST(self, request):
+        self.postdata = self.get_postdata(request)
+        d = self.render_aux(request, self.async_POST)
+        request.notifyFinish().addErrback(self.cancel, request, d)
+        d.addBoth(self.finalize, request)
+        return NOT_DONE_YET
+
+    def render_DELETE(self, request):
+        self.postdata = self.get_postdata(request)
+        d = self.render_aux(request, self.async_DELETE)
+        request.notifyFinish().addErrback(self.cancel, request, d)
+        d.addBoth(self.finalize, request)
+        return NOT_DONE_YET
+
+
+class ObjectRESTService(RESTService):
 
     def __init__(self, path, method):
         resource.Resource.__init__(self)
         self.path = path
         self.method = method
 
-    def cancel(self, err, request, d):
-        warn_out("Cancelling current request.")
-        d.cancel()
-
-    def finalize(self, value, request):
-        from os import getpid
-
-        request.setHeader('Content-Type', 'application/json; charset=UTF-8')
-
-        if isinstance(value, Failure):
-            request.setResponseCode(500)
-            if isinstance(value.value, exception.AlmarErrorBase):
-                error = dict(message=str(value.value), pid=getpid())
-                response = dict(error=error)
-            else:
-                error = dict(data=value.getTraceback(),
-                             message=str(value.value),
-                             pid=getpid())
-                response = dict(error=error)
-        else:
-            response = dict(result=value)
-            request.setResponseCode(200)
-
-        request.write(json_encode(response))
-        if not request._disconnected:
-            request.finish()
-
-    def render_GET(self, request):
-        d = self.async_GET(request)
-        request.notifyFinish().addErrback(self.cancel, request, d)
-        d.addBoth(self.finalize, request)
-        return NOT_DONE_YET
-
-    def render_POST(self, request):
-        d = self.async_POST(request)
-        request.notifyFinish().addErrback(self.cancel, request, d)
-        d.addBoth(self.finalize, request)
-        return NOT_DONE_YET
-
-    def render_DELETE(self, request):
-        d = self.async_DELETE(request)
-        request.notifyFinish().addErrback(self.cancel, request, d)
-        d.addBoth(self.finalize, request)
-        return NOT_DONE_YET
-
     @defer.inlineCallbacks
     def async_GET(self, request):
         b = Backend()
         result = yield b.get([self.path], self.method)
         if self.method == 'descendant':
-            defer.returnValue(result)
+            retval = RESTResult(code=200, content=result)
         else:
-            defer.returnValue(result[0][1])
+            retval = RESTResult(code=200, content=result[0][1])
+
+        defer.returnValue(retval)
 
     @defer.inlineCallbacks
     def async_POST(self, request):
         b = Backend()
 
-        request.content.seek(0, 0)
-        content = request.content.read()
-        try:
-            data = json_decode(content)
-        except ValueError:
-            raise exception.MalformedIncomingData('must be json')
-        if not isinstance(data, dict):
-            raise exception.MalformedIncomingData('must be json dict')
-        data['path'] = self.path
-        result = yield b.upsert([data])
-        defer.returnValue(result)
+        self.postdata['path'] = self.path
+        result = yield b.upsert([self.postdata])
+        defer.returnValue(RESTResult(code=200, content=result))
 
     @defer.inlineCallbacks
     def async_DELETE(self, request):

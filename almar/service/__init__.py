@@ -52,8 +52,8 @@ class AlmarRootResource(resource.Resource):
 
 worker_root = resource.Resource()
 worker_root.putChild('op', OperationService())
-worker_root.putChild('rest', ObjectRESTProxyService())
 worker_root.putChild('object', ObjectJSONRPCProxyService())
+worker_root.putChild('rest', ObjectRESTProxyService())
 
 proxy_root = resource.Resource()
 proxy_root.putChild('op', AlmarProxyService())
