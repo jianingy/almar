@@ -63,7 +63,7 @@ class DomainSearchService(RESTService):
         q = '__path__ ~ *.%s.0 AND zone == %s' % (rtype.upper(), self.domain)
         domains = yield search_all(q)
         result = map(lambda x: _format(x, rtype=rtype), domains)
-        defer.returnValue(RESTResult(code=200, content=dict(domains=result)))
+        defer.returnValue(RESTResult(code=200, content=dict(resourceRecords=result)))
 
 
 class DomainProxyService(resource.Resource):
