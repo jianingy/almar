@@ -44,9 +44,10 @@ class AlmarServiceMaker(object):
             port_no = int(options['port'])
 
         # start database connection
-        from almar.backend.postgresql import PostgreSQLBackend as Backend
-        b = Backend()
-        b.start()
+        if options['proxy'] == 'normal':
+            from almar.backend.postgresql import PostgreSQLBackend as Backend
+            b = Backend()
+            b.start()
 
         return internet.TCPServer(port_no, site)
 
