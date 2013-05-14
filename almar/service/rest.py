@@ -40,11 +40,9 @@ class RESTService(resource.Resource):
 
         return data
 
-
     def cancel(self, err, request, d):
         warn_out("Cancelling current request.")
         d.cancel()
-
 
     def finalize(self, result, request):
         from os import getpid
@@ -62,7 +60,7 @@ class RESTService(resource.Resource):
                              pid=getpid())
                 response = dict(error=error)
         else:
-            response = dict(result=result.content)
+            response = result.content
             request.setResponseCode(result.code)
 
         request.write(json_encode(response))
