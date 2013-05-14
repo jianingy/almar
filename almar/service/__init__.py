@@ -14,7 +14,6 @@ from twisted.internet import reactor
 from almar.service.jsonrpc import OperationService, ObjectJSONRPCProxyService
 from almar.service.rest import ObjectRESTProxyService
 from almar.service.proxy import AlmarProxyService
-from almar.service.alidns import AliDNSService
 
 __all__ = ['worker_root', 'proxy_root']
 
@@ -55,12 +54,7 @@ worker_root = resource.Resource()
 worker_root.putChild('op', OperationService())
 worker_root.putChild('object', ObjectJSONRPCProxyService())
 
-#worker_root.putChild('rest', ObjectRESTProxyService())
-alidns = resource.Resource()
-worker_root.putChild('alidns', alidns)
-alidnsv1 = AliDNSService()
-alidns.putChild('v1', alidnsv1)
-
-
+from almar.service.alidns import alidns_root
 proxy_root = resource.Resource()
 proxy_root.putChild('op', AlmarProxyService())
+proxy_root.putChild('alidns', alidns_root)
