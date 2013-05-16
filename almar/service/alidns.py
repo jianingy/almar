@@ -66,14 +66,54 @@ class DomainSearchService(RESTService):
         defer.returnValue(RESTResult(code=200, content=dict(resourceRecords=result)))
 
 
+class RecordService(RESTService):
+
+    isLeaf = True
+
+    def __init__(self, domain):
+        RESTService.__init__(self)
+        self.domain = domain
+
+    @defer.inlineCallbacks
+    def async_GET(self, request):
+
+        def _format(domain):
+            return {'data': domain['answer'],
+                    'ttl': domain['ttl'],
+                    #'type': domain['type'],  #TODO
+                    'type': '',
+                    'name': domain['name']}
+
+        _rpath = self.domain.rstrip('.').split('.')
+        _rpath.reverse()
+        _rpath = '.'.join(_rpath)
+        q = '__path__ <@ %s' % _rpath
+        domains = yield search_all(q)
+        result = map(lambda x: _format(x), domains)
+        defer.returnValue(RESTResult(code=200, content=dict(resourceRecords=result)))
+
+
 class DomainProxyService(resource.Resource):
 
     isLeaf = False
 
     def getChild(self, name, request):
         domain = request.prepath[-1]
+
+        baselen = len(request.prepath)
+
         if domain:
-            return DomainSearchService(domain)
+            splitpath = request.path.strip('/').split('/')
+            pathlen = len(splitpath)
+
+            if pathlen == (baselen + 1):
+                if splitpath[-1] == 'records':
+                    domain = splitpath[-2]
+                    return RecordService(domain)
+                ##else:
+                ##    return 400.BadRequest
+            else:
+                return DomainSearchService(domain)
         else:
             return DomainListService()
 
