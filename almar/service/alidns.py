@@ -57,7 +57,7 @@ class DomainSearchService(RESTService):
             return {'data': domain['answer'],
                     'ttl': domain['ttl'],
                     'type': rtype,
-                    'name': ''}         # FIXME: add NAME field to database
+                    'name': domain['name']}
 
         rtype = request.args.get('rtype', ['A'])[0]
         q = '__path__ ~ *.%s.0 AND zone == %s' % (rtype.upper(), self.domain)
