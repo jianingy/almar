@@ -38,6 +38,25 @@ class OperationService(jsonrpc.JSONRPC):
         except Exception as e:
             raise
 
+    @defer.inlineCallbacks
+    def jsonrpc_push(self, path, lst):
+        try:
+            b = Backend()
+            resp = yield b.push(path, lst)
+            defer.returnValue(resp)
+        except exception.MissingFieldError as e:
+            defer.returnValue(Fault(exception.INVALID_INPUT, str(e)))
+        except exception.ModelNotExistError as e:
+            defer.returnValue(Fault(exception.INVALID_INPUT, str(e)))
+        except exception.KeyNotDefinedError as e:
+            defer.returnValue(Fault(exception.INVALID_INPUT, str(e)))
+        except exception.MalformedIncomingData as e:
+            defer.returnValue(Fault(exception.INVALID_INPUT, str(e)))
+        except exception.ConstraintViolationError as e:
+            defer.returnValue(Fault(exception.CONSTRAINT_VIOLATION, str(e)))
+        except:
+            raise
+
     def jsonrpc_get(self, paths, method='self'):
         b = Backend()
         return b.get(paths, method)
