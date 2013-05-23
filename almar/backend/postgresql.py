@@ -58,7 +58,11 @@ class SQL(object):
                   ' (\'"__model__" => "\' || model::text || \'"\')::hstore'
                   ' FROM %s WHERE path=%%s))')
 
+    GET_PUSHID = ('SELECT count(path)'
+                  ' FROM %s WHERE path <@ %%s AND path != %%s')
+
     DELETE_OBJECT = 'DELETE FROM %s WHERE path = %%s'
+
     DELETE_OBJECT_CASCADE = 'DELETE FROM %s WHERE path <@ %%s'
 
     TRY_TOUCH_OBJECT = 'UPDATE %s SET path=path WHERE path=%%s'
@@ -102,7 +106,7 @@ class PostgreSQLBackend(object):
         dsn = " ".join(
             map(lambda x: "%s=%s" % (x, getattr(self.g.database, x)),
                 filter(lambda x: getattr(self.g.database, x),
-                    ['host', 'port', 'user', 'password', 'dbname'])))
+                       ['host', 'port', 'user', 'password', 'dbname'])))
         self.conn = txpostgres.ConnectionPool(None, dsn)
         d = self.conn.start()
         if initdb:
@@ -171,7 +175,7 @@ class PostgreSQLBackend(object):
     def _init_table_constraint(self, c):
         # get all indice
         result = yield c.runQuery(SQL.LIST_INDEX,
-                                     (self.schema, self.t_object))
+                                  (self.schema, self.t_object))
         if result:
             indice = map(lambda x: x[0], result)
         else:
@@ -422,16 +426,24 @@ class PostgreSQLBackend(object):
     @defer.inlineCallbacks
     def _push_xaction(self, c, path, items):
         affected = 0
+        if not items:
+            defer.returnValue(dict(affected=affected))
 
         yield c.execute(SQL.GET_OBJECT % self.s_object, [path])
         parent = dict(c.fetchall())
+
         next_id = int(parent['__seq__']) if '__seq__' in parent else 0
+        if not parent:
+            yield c.execute(SQL.GET_PUSHID % self.s_object, [path, path])
+            next_id = int(c.fetchall()[0][0])
+            parent['__model__'] = items[0].model
 
         for item in items:
             affected += yield self._push_one(c, path, next_id, item)
             next_id = next_id + 1
 
         hstore_value = self.serialize_hstore(dict(__seq__=next_id))
+
         yield c.execute(SQL.UPDATE_OBJECT % self.s_object,
                         [parent['__model__'], hstore_value, path])
 
@@ -542,7 +554,7 @@ class PostgreSQLBackend(object):
                         where_clause = "\"%s\" %s E'%s'" % (lhs, term, rhs)
                     elif term == "IN":
                         _ = ",".join(map(lambda x: "%s" % quote(x),
-                        rhs.split(",")))
+                            rhs.split(",")))
                         where_clause = "%s = ANY(ARRAY[%s])" % (lhs, _)
                 elif term == "IN":
                     _ = ",".join(map(lambda x: "lower('%s')" % quote(x),
