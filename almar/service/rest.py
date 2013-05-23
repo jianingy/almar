@@ -19,6 +19,7 @@ from collections import namedtuple
 
 RESTResult = namedtuple('RESTResult', ['code', 'content'])
 
+
 class RESTService(resource.Resource):
 
     isLeaf = True
@@ -69,9 +70,12 @@ class RESTService(resource.Resource):
 
     @defer.inlineCallbacks
     def render_aux(self, request, f):
-        self.postdata = self.get_postdata(request)
-        retval = yield f(request)
-        defer.returnValue(retval)
+        try:
+            self.postdata = yield self.get_postdata(request)
+            retval = yield f(request)
+            defer.returnValue(retval)
+        except Exception as e:
+            raise e
 
     def render_GET(self, request):
         d = self.render_aux(request, self.async_GET)
@@ -86,14 +90,12 @@ class RESTService(resource.Resource):
         return NOT_DONE_YET
 
     def render_POST(self, request):
-        self.postdata = self.get_postdata(request)
         d = self.render_aux(request, self.async_POST)
         request.notifyFinish().addErrback(self.cancel, request, d)
         d.addBoth(self.finalize, request)
         return NOT_DONE_YET
 
     def render_DELETE(self, request):
-        self.postdata = self.get_postdata(request)
         d = self.render_aux(request, self.async_DELETE)
         request.notifyFinish().addErrback(self.cancel, request, d)
         d.addBoth(self.finalize, request)
