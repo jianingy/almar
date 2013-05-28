@@ -57,9 +57,14 @@ class OperationService(jsonrpc.JSONRPC):
         except:
             raise
 
+
     def jsonrpc_get(self, paths, method='self'):
         b = Backend()
         return b.get(paths, method)
+
+    def jsonrpc_smart_delete(self, path, query):
+        b = Backend()
+        return b.smart_delete(path, query)
 
     def jsonrpc_delete(self, paths, cascade=False):
         print paths, cascade

@@ -40,6 +40,10 @@ class SearchGrammerError(AlmarErrorBase):
     pass
 
 
+class AlidnsException(Exception):
+    pass
+
+
 # ERROR CODE
 
 INVALID_INPUT = 4001

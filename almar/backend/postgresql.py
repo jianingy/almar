@@ -63,6 +63,8 @@ class SQL(object):
 
     DELETE_OBJECT = 'DELETE FROM %s WHERE path = %%s'
 
+    SMART_DELETE_OBJECT = 'DELETE FROM %s WHERE %s AND path <@ %%s'
+
     DELETE_OBJECT_CASCADE = 'DELETE FROM %s WHERE path <@ %%s'
 
     TRY_TOUCH_OBJECT = 'UPDATE %s SET path=path WHERE path=%%s'
@@ -349,6 +351,26 @@ class PostgreSQLBackend(object):
                 result.append((path, dict(c.fetchall())))
 
         defer.returnValue(result)
+
+    ##########################################################################
+    #
+    # API: SMART_DELETE
+    #
+    ##########################################################################
+    @defer.inlineCallbacks
+    def smart_delete(self, path, query):
+        where_clause = self._build_where_clause(parse_query(query))
+        affected = yield self.conn.runInteraction(
+            self._sdelete_xaction, path, where_clause)
+        defer.returnValue(affected)
+
+    @defer.inlineCallbacks
+    def _sdelete_xaction(self, c, path, where_clause):
+        affected = 0
+        yield c.execute(SQL.SMART_DELETE_OBJECT % (
+            self.s_object, where_clause), [path])
+        affected = affected + c._cursor.rowcount
+        defer.returnValue(affected)
 
     ##########################################################################
     #
